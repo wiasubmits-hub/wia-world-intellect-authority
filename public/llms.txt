@@ -1,0 +1,14 @@
+# TIA Enterprise Portal & Mobile App
+> Tirupati Intellect Authority - Empowering Tirupati with AI, Mechatronics, and Cloud Systems. Led by Founder & CEO M. Bhargav Rayudu (B.Tech Mechatronics • CAD Diploma), GSTIN 37EYLPM8018M1ZN.
+
+## Core Services
+- [TIA Enterprise Portal](https://tia-tirupati-intellect-authority.onrender.com/): Official enterprise workstation, executive attendance, payslips, communications, and multi-file code studio.
+- [TIA Mobile App Download](https://tia-tirupati-intellect-authority.onrender.com/download/app): Official cross-platform mobile PWA installation and desktop application package.
+- [Agentic Resource Discovery Catalog](https://tia-tirupati-intellect-authority.onrender.com/.well-known/ai-catalog.json): Standard machine-readable AI agent capability manifest.
+- [System Sitemap](https://tia-tirupati-intellect-authority.onrender.com/sitemap.xml): Complete machine-readable XML sitemap for automated indexing.
+
+## Capabilities
+- [Executive Attendance System](https://tia-tirupati-intellect-authority.onrender.com/#attendance): Geolocation-verified punch-in, work hours logging, and executive verification.
+- [AI Code Forge](https://tia-tirupati-intellect-authority.onrender.com/#code-runner): Browser-based code runner and terminal emulator for JavaScript, Python, C, C++, and Web systems.
+- [Automated Payslip Engine](https://tia-tirupati-intellect-authority.onrender.com/#payslips): Automated monthly salary slips, tax deductions, and printable enterprise vouchers.
+- [Executive Communications](https://tia-tirupati-intellect-authority.onrender.com/#communications): Real-time priority messaging connecting CEO, CMO, PM, and Engineering leads.

@@ -1,0 +1,61 @@
+{
+  "specVersion": "1.0",
+  "host": {
+    "displayName": "Tirupati Intellect Authority",
+    "identifier": "did:web:tia-tirupati-intellect-authority.onrender.com",
+    "documentationUrl": "https://tia-tirupati-intellect-authority.onrender.com/llms.txt",
+    "logoUrl": "https://tia-tirupati-intellect-authority.onrender.com/assets/tia_logo_circle.png"
+  },
+  "entries": [
+    {
+      "identifier": "urn:air:tia-tirupati-intellect-authority.onrender.com:app:portal",
+      "displayName": "TIA Enterprise Portal & IDE Studio",
+      "type": "application/ai-catalog+json",
+      "url": "https://tia-tirupati-intellect-authority.onrender.com/",
+      "description": "Official TIA IDE Studio and Enterprise Operations Portal",
+      "representativeQueries": [
+        "Open TIA IDE Studio and code editor",
+        "Check Tirupati Intellect Authority employee roster and shifts"
+      ],
+      "tags": [
+        "enterprise",
+        "ide",
+        "mechatronics",
+        "ai"
+      ]
+    },
+    {
+      "identifier": "urn:air:tia-tirupati-intellect-authority.onrender.com:app:mobile",
+      "displayName": "TIA Mobile Application",
+      "type": "application/ai-catalog+json",
+      "url": "https://tia-tirupati-intellect-authority.onrender.com/download/app",
+      "description": "TIA Enterprise Mobile App and PWA for Android and iOS",
+      "representativeQueries": [
+        "Download TIA Enterprise Mobile App",
+        "Install TIA PWA on Android or iPhone"
+      ],
+      "tags": [
+        "mobile",
+        "pwa",
+        "android",
+        "ios"
+      ]
+    },
+    {
+      "identifier": "urn:air:tia-tirupati-intellect-authority.onrender.com:context:llms",
+      "displayName": "TIA LLM Context Specification",
+      "type": "application/agent-card+json",
+      "url": "https://tia-tirupati-intellect-authority.onrender.com/llms.txt",
+      "description": "TIA LLM Context Specification and system capabilities",
+      "representativeQueries": [
+        "Read Tirupati Intellect Authority LLM prompt context",
+        "Understand TIA company capabilities and APIs"
+      ],
+      "tags": [
+        "context",
+        "documentation",
+        "llm"
+      ]
+    }
+  ]
+}
