@@ -1,0 +1,48 @@
+{
+  "name": "TIA Enterprise Portal & IDE",
+  "short_name": "TIA Mobile",
+  "description": "Tirupati Intellect Authority - Mobile Enterprise Portal & IDE Studio",
+  "start_url": "/?source=pwa",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#050811",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/assets/tia_logo_circle.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/tia_logo_circle.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "1-Click Attendance",
+      "short_name": "Clock In",
+      "description": "Quick attendance check-in",
+      "url": "/?source=pwa#dashboard",
+      "icons": [{ "src": "/assets/tia_logo_circle.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Executive Messages",
+      "short_name": "Chat",
+      "description": "Connect with CEO, CMO, PM",
+      "url": "/?source=pwa#communications",
+      "icons": [{ "src": "/assets/tia_logo_circle.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Payslips Management",
+      "short_name": "Payslips",
+      "description": "View employee payslips",
+      "url": "/?source=pwa#payslips",
+      "icons": [{ "src": "/assets/tia_logo_circle.png", "sizes": "192x192" }]
+    }
+  ],
+  "categories": ["business", "productivity", "utilities"]
+}

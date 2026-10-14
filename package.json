@@ -1,0 +1,26 @@
+{
+  "name": "tia-portal",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "ide": "node server.js",
+    "mobile:init": "npx cap init \"TIA Enterprise Portal\" com.tia.enterprise --web-dir public",
+    "mobile:add-android": "npx cap add android",
+    "mobile:sync": "npx cap sync",
+    "mobile:open-android": "npx cap open android",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "compression": "^1.8.2",
+    "cors": "^2.8.6",
+    "express": "^5.3.0",
+    "multer": "^2.4.0",
+    "ws": "^8.22.0"
+  }
+}

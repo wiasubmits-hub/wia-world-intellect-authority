@@ -1,0 +1,2401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>TIA Enterprise Portal & Mobile App | Tirupati Intellect Authority</title>
+  <meta name="description" content="Official TIA Enterprise Portal & Mobile App by Tirupati Intellect Authority. Empowering Tirupati with AI, Mechatronics, CAD Automation, and Executive Leadership.">
+  <link rel="canonical" href="https://tia-tirupati-intellect-authority.onrender.com/">
+
+  <!-- PWA & Mobile Web Capabilities -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#050811">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TIA Mobile">
+  <link rel="apple-touch-icon" href="/assets/tia_logo_circle.png">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="/assets/tia_logo_circle.png">
+  <link rel="ai-catalog" href="/.well-known/ai-catalog.json">
+
+  <!-- Immediate app-mode detection before rendering prevents any download button flash in standalone mode -->
+  <script>
+    (function() {
+      var isStandalone = (window.matchMedia && (
+                            window.matchMedia('(display-mode: standalone)').matches ||
+                            window.matchMedia('(display-mode: fullscreen)').matches ||
+                            window.matchMedia('(display-mode: minimal-ui)').matches
+                          )) ||
+                         window.navigator.standalone === true ||
+                         document.referrer.includes('android-app://') ||
+                         location.search.indexOf('pwa') !== -1 ||
+                         location.search.indexOf('mode=app') !== -1;
+      if (isStandalone) {
+        document.documentElement.classList.add('in-app-mode');
+      } else {
+        try { localStorage.removeItem('tia_app_installed'); } catch(e){}
+      }
+    })();
+    window.addEventListener('error', function(e) {
+      if (!e) return;
+      var msg = (e.message || (e.error && e.error.message) || '').toString();
+      if (msg.includes('WebSocket') || msg.includes('abort') || msg.includes('ResizeObserver') || msg.includes('favicon') || msg.includes('cancelled') || msg.includes('Failed to fetch')) {
+        e.preventDefault();
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+        return true;
+      }
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+      if (!e) return;
+      var reason = (e.reason && (e.reason.message || e.reason)) || '';
+      var msg = reason.toString();
+      if (msg.includes('abort') || msg.includes('WebSocket') || msg.includes('cancelled') || msg.includes('Failed to fetch')) {
+        e.preventDefault();
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+        return true;
+      }
+    });
+  </script>
+
+  <!-- Preconnect to CDNs & Preload LCP Logo Image for Instant < 0.6s FCP/LCP -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="image" href="/assets/tia_logo_circle.png" fetchpriority="high">
+
+  <!-- Critical Inline CSS for Instant < 0.6s First Contentful Paint & Zero CLS -->
+  <style>
+    :root {
+      --bg-black: #050811;
+      --bg-deep: #090e1a;
+      --bg-surface: #0f172a;
+      --text-white: #ffffff;
+      --blue-primary: #2563eb;
+      --blue-vibrant: #3b82f6;
+      --blue-light: #60a5fa;
+      --grey-light: #f1f5f9;
+      --grey-medium: #cbd5e1;
+      --grey-dark: #94a3b8;
+      --green-light: #34d399;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #050811;
+      color: #ffffff;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .skip-link {
+      position: absolute;
+      top: -60px;
+      left: 10px;
+      background: #2563eb;
+      color: #ffffff;
+      padding: 8px 14px;
+      z-index: 99999;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: 700;
+      transition: top 0.15s ease;
+    }
+    .skip-link:focus { top: 10px; }
+
+    .ide-root {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background: #050811;
+      position: relative;
+    }
+    .ide-menubar {
+      height: 38px;
+      background: #090e1a;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 0 12px;
+    }
+    .ide-workbench {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Enterprise View Overlay */
+    .ide-enterprise-view {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #050811;
+      z-index: 400;
+      display: none;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 20px 24px;
+    }
+    .ide-enterprise-view.active {
+      display: flex;
+    }
+
+    /* Header Container */
+    .header-container {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(9, 14, 26, 0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 24px;
+      max-width: 1720px;
+      margin: 0 auto;
+    }
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .logo-frame {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      padding: 2px;
+      background: linear-gradient(135deg, #3b82f6 0%, #10b981 50%, #ffffff 100%);
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .logo-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+      display: block;
+    }
+    .brand-info h1 {
+      font-size: 1.35rem;
+      margin: 0 0 2px 0;
+      line-height: 1.2;
+      font-weight: 800;
+      color: #ffffff;
+    }
+    .text-gradient-blue {
+      background: linear-gradient(135deg, #ffffff 0%, #93c5fd 50%, #3b82f6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: inline-block;
+    }
+    .brand-tagline {
+      font-size: 0.78rem;
+      color: #60a5fa;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .brand-ceo {
+      font-size: 0.72rem;
+      color: #94a3b8;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .live-clock {
+      font-family: monospace;
+      font-size: 0.82rem;
+      color: #f1f5f9;
+      background: #0f172a;
+      padding: 7px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-sm-action {
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: #0f172a;
+      color: #ffffff;
+      font-size: 0.8rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .download-app-btn {
+      display: inline-flex !important;
+      border-color: rgba(16, 185, 129, 0.4) !important;
+      color: #34d399 !important;
+    }
+    .employee-switcher {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #0f172a;
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    .nav-tabs {
+      display: flex;
+      gap: 6px;
+      max-width: 1720px;
+      margin: 0 auto;
+      padding: 0 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      overflow-x: auto;
+    }
+    .nav-tab-btn {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 0.88rem;
+      font-weight: 600;
+      padding: 12px 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-bottom: 3px solid transparent;
+      white-space: nowrap;
+    }
+    .nav-tab-btn.active {
+      color: #60a5fa;
+      border-bottom-color: #3b82f6;
+      background: rgba(37, 99, 235, 0.08);
+    }
+    .main-content {
+      max-width: 1720px;
+      margin: 20px auto;
+      padding: 0 24px;
+    }
+    .card {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .mobile-bottom-nav {
+      display: none;
+    }
+
+    /* Mobile Screen Optimization (<= 768px) */
+    @media (max-width: 768px) {
+      .ide-menubar {
+        display: none !important;
+      }
+      .ide-enterprise-view {
+        display: flex !important;
+        padding: 10px 12px 80px 12px !important;
+      }
+      .ide-enterprise-view.ide-hidden-mobile {
+        display: none !important;
+      }
+      .header-top {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 12px;
+      }
+      .header-actions {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 6px;
+        justify-content: space-between;
+      }
+      .nav-tabs {
+        padding: 0 10px;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+      }
+      .main-content {
+        padding: 0 10px;
+        margin: 12px auto;
+      }
+      .mobile-bottom-nav {
+        display: flex !important;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100vw;
+        height: 60px;
+        background: rgba(5, 8, 17, 0.95);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        z-index: 9999;
+        justify-content: space-around;
+        align-items: center;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      .mobile-nav-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        background: transparent;
+        border: none;
+        color: #94a3b8;
+        font-size: 0.68rem;
+        cursor: pointer;
+      }
+      .mobile-nav-btn.active {
+        color: #3b82f6;
+      }
+      .download-app-btn,
+      #btnHeaderDownloadApp {
+        display: inline-flex !important;
+      }
+    }
+  </style>
+
+  <!-- Non-Blocking Asynchronous Stylesheet Load with Fallback -->
+  <link rel="preload" href="/css/style.min.css?v=3.6" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="/css/style.min.css?v=3.6"></noscript>
+
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap"></noscript>
+</head>
+<body>
+  <!-- Accessibility Skip Link -->
+  <a href="#mainContent" class="skip-link">Skip to main content</a>
+
+  <main class="ide-root" id="mainContent" role="main">
+    <!-- 1. TOP MENU BAR -->
+    <div class="ide-menubar">
+      <!-- File Menu -->
+      <div class="menu-item">
+        <span>File</span>
+        <div class="menu-dropdown">
+          <div class="dropdown-link" onclick="promptNewFile()"><span><i class="ph ph-file-plus"></i> New File</span><span class="hotkey">Ctrl+N</span></div>
+          <div class="dropdown-link" onclick="promptNewFolder()"><span><i class="ph ph-folder-plus"></i> New Folder</span></div>
+          <div class="dropdown-link" onclick="saveActiveFile()"><span><i class="ph ph-floppy-disk"></i> Save File</span><span class="hotkey">Ctrl+S</span></div>
+          <div class="dropdown-link" onclick="loadWorkspaceTree()"><span><i class="ph ph-arrows-clockwise"></i> Refresh Workspace</span></div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-link" onclick="exportProjectZip()"><span><i class="ph ph-download-simple"></i> Export Project</span></div>
+        </div>
+      </div>
+
+      <!-- Edit Menu -->
+      <div class="menu-item">
+        <span>Edit</span>
+        <div class="menu-dropdown">
+          <div class="dropdown-link" onclick="formatActiveCode()"><span><i class="ph ph-magic-wand"></i> Format Code</span><span class="hotkey">Shift+Alt+F</span></div>
+          <div class="dropdown-link" onclick="clearActiveEditor()"><span><i class="ph ph-trash"></i> Clear File</span></div>
+        </div>
+      </div>
+
+      <!-- Selection Menu -->
+      <div class="menu-item">
+        <span>Selection</span>
+        <div class="menu-dropdown">
+          <div class="dropdown-link" onclick="selectAllCode()"><span><i class="ph ph-selection-all"></i> Select All</span><span class="hotkey">Ctrl+A</span></div>
+        </div>
+      </div>
+
+      <!-- View Menu -->
+      <div class="menu-item">
+        <span>View</span>
+        <div class="menu-dropdown">
+          <div class="dropdown-link" onclick="toggleSidebar()"><span><i class="ph ph-sidebar-simple"></i> Toggle Primary Side Bar</span><span class="hotkey">Ctrl+B</span></div>
+          <div class="dropdown-link" onclick="setSidebarTab('explorer')"><span><i class="ph ph-files"></i> File Explorer</span></div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-link" onclick="zoomIn()"><span><i class="ph ph-magnifying-glass-plus"></i> Zoom In</span><span class="hotkey">Ctrl+=</span></div>
+          <div class="dropdown-link" onclick="zoomOut()"><span><i class="ph ph-magnifying-glass-minus"></i> Zoom Out</span><span class="hotkey">Ctrl+-</span></div>
+          <div class="dropdown-link" onclick="resetZoom()"><span><i class="ph ph-arrows-counter-clockwise"></i> Reset Zoom</span><span class="hotkey">Ctrl+0</span></div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-link" onclick="toggleLivePreview()"><span><i class="ph ph-browsers"></i> Live Web Preview</span><span class="hotkey">Ctrl+Shift+V</span></div>
+          <div class="dropdown-link" onclick="toggleBottomDock()"><span><i class="ph ph-terminal-window"></i> Integrated Terminal</span><span class="hotkey">Ctrl+`</span></div>
+          <div class="dropdown-link" onclick="toggleEnterpriseView()"><span><i class="ph ph-buildings"></i> Enterprise Operations Hub</span><span class="hotkey">Ctrl+E</span></div>
+        </div>
+      </div>
+
+      <!-- Run Menu -->
+      <div class="menu-item">
+        <span>Run</span>
+        <div class="menu-dropdown">
+          <div class="dropdown-link" onclick="runActiveFile()"><span><i class="ph ph-play" style="color:var(--green-light);"></i> Run Current Code</span><span class="hotkey">F5</span></div>
+          <div class="dropdown-link" onclick="toggleLivePreview()"><span><i class="ph ph-globe" style="color:var(--blue-light);"></i> Run in Live Web Preview</span></div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-link" onclick="clearOutputConsole()"><span><i class="ph ph-x-circle"></i> Clear Console</span></div>
+        </div>
+      </div>
+
+      <!-- Terminal Menu -->
+      <div class="menu-item">
+        <span>Terminal</span>
+        <div class="menu-dropdown">
+          <div class="dropdown-link" onclick="focusTerminal()"><span><i class="ph ph-terminal"></i> New Terminal Session</span></div>
+          <div class="dropdown-link" onclick="clearTerminalHistory()"><span><i class="ph ph-trash"></i> Clear Terminal Output</span></div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-link" onclick="runQuickCmd('dir')"><span>Run: dir</span></div>
+          <div class="dropdown-link" onclick="runQuickCmd('node app.js')"><span>Run: node app.js</span></div>
+          <div class="dropdown-link" onclick="runQuickCmd('npm test')"><span>Run: npm test</span></div>
+        </div>
+      </div>
+
+      <!-- Enterprise Suite Menu -->
+      <div class="menu-item">
+        <span style="color:var(--blue-light); font-weight:700;">Enterprise</span>
+        <div class="menu-dropdown">
+          <div class="dropdown-link" onclick="openEnterpriseTab('dashboard')"><span><i class="ph ph-timer"></i> Dashboard & Attendance</span></div>
+          <div class="dropdown-link" onclick="openEnterpriseTab('communications')"><span><i class="ph ph-chats-circle"></i> Executive Connect & Messages</span></div>
+          <div class="dropdown-link" onclick="openEnterpriseTab('courses')"><span><i class="ph ph-graduation-cap"></i> Courses & Dealers/Clients Hub</span></div>
+          <div class="dropdown-link" onclick="openEnterpriseTab('students')"><span><i class="ph ph-student"></i> Students & Invoicing</span></div>
+          <div class="dropdown-link" onclick="openEnterpriseTab('payslips')"><span><i class="ph ph-receipt"></i> Employees Payslip Management</span></div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-link" onclick="alert('TIA GSTIN: 37EYLPM8018M1ZN\nTirupati Intellect Authority\nEmpowering Tirupati with AI')"><span><i class="ph ph-identification-card"></i> Company GSTIN: 37EYLPM8018M1ZN</span></div>
+        </div>
+      </div>
+
+      <!-- Tools Menu -->
+      <div class="menu-item">
+        <span>Tools</span>
+        <div class="menu-dropdown">
+          <div class="dropdown-link" onclick="setSidebarTab('forge')"><span><i class="ph ph-code-block"></i> Software Forge Generator</span></div>
+          <div class="dropdown-link" onclick="setSidebarTab('fixer')"><span><i class="ph ph-bug"></i> Intelligent Code Diagnoser</span></div>
+        </div>
+      </div>
+
+      <!-- Help Menu -->
+      <div class="menu-item">
+        <span>Help</span>
+        <div class="menu-dropdown">
+          <div class="dropdown-link" onclick="showAboutModal()"><span><i class="ph ph-info"></i> About TIA IDE Studio</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. TOP TOOLBAR -->
+    <div class="ide-toolbar">
+      <div class="toolbar-left">
+        <button class="btn-sidebar-toggle active" id="btnToggleSidebar" onclick="toggleSidebar()" title="Toggle Primary Side Bar (Ctrl+B)">
+          <i class="ph ph-sidebar-simple"></i>
+        </button>
+
+        <div class="ide-brand-badge">
+          <img src="/assets/tia_logo_circle.png" alt="TIA Logo" class="ide-brand-logo" width="28" height="28">
+          <span class="ide-brand-title"><span class="text-gradient-blue">TIA</span> IDE Studio</span>
+          <span class="ide-brand-tag">Enterprise v2.0</span>
+        </div>
+
+        <button class="btn-tool btn-tool-run" onclick="runActiveFile()" title="Run Current Code (F5)">
+          <i class="ph ph-play-fill"></i> Run
+        </button>
+        <button class="btn-tool btn-tool-preview" onclick="toggleLivePreview()" title="Toggle Live Web Runner">
+          <i class="ph ph-browsers"></i> Live Preview
+        </button>
+        <button class="btn-tool" onclick="formatActiveCode()" title="Format Code (Shift+Alt+F)">
+          <i class="ph ph-magic-wand"></i> Format
+        </button>
+        <button class="btn-tool" onclick="promptNewFile()" title="New File">
+          <i class="ph ph-file-plus"></i> New File
+        </button>
+        <button class="btn-tool" onclick="saveActiveFile()" title="Save (Ctrl+S)">
+          <i class="ph ph-floppy-disk"></i> Save
+        </button>
+      </div>
+
+      <div class="toolbar-center">
+        <div class="workspace-badge" title="Active Project Directory">
+          <i class="ph ph-folder-open" style="color:var(--blue-light);"></i>
+          <span>workspace/</span>
+          <span id="toolbarActiveFileName" style="color:#ffffff; font-weight:700;">index.html</span>
+        </div>
+      </div>
+
+      <div class="toolbar-right">
+        <!-- Download Mobile & Desktop App Button -->
+        <button class="btn-tool download-app-btn" id="btnToolbarDownloadApp" onclick="openDownloadAppModal()" style="border-color:rgba(16,185,129,0.5); color:var(--green-light); font-weight:700;" title="Download & Install TIA Mobile App">
+          <i class="ph ph-download-simple"></i> <span>Download App</span>
+        </button>
+
+        <!-- Quick Enterprise Core Toggle Button -->
+        <button class="btn-tool" onclick="toggleEnterpriseView()" style="border-color:rgba(59,130,246,0.4); color:var(--blue-light);">
+          <i class="ph ph-buildings"></i> <span id="btnEnterpriseViewToggleText">Enterprise Hub</span>
+        </button>
+
+        <!-- Executive Role Login Button -->
+        <button class="btn-tool" onclick="openLoginModal()" style="border-color:rgba(59,130,246,0.4); color:#ffffff;">
+          <i class="ph ph-user-switch" style="color:var(--blue-light);"></i>
+          <span id="ideToolbarLoginText">Role Login</span>
+        </button>
+
+        <!-- Active Executive Badge -->
+        <div class="employee-switcher" id="ideActiveRoleBadge" style="padding:4px 10px; margin:0;" onclick="openLoginModal()">
+          <span class="online-indicator offline" id="ideUserPresenceDot"></span>
+          <span id="ideActiveRoleText" style="font-size:0.8rem; font-weight:700;">Guest</span>
+        </div>
+
+        <!-- 1-Click Clock In/Out -->
+        <button id="ideBtnClock" class="btn-clock-action btn-clock-in" onclick="toggleClockAction()" style="padding:6px 14px; font-size:0.8rem;">
+          <i class="ph ph-fingerprint"></i>
+          <span id="ideClockBtnLabel">Check In</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 3. MAIN WORKBENCH -->
+    <div class="ide-workbench">
+      <!-- Activity Bar -->
+      <div class="ide-activity-bar">
+        <button class="activity-btn active" id="actBtnExplorer" onclick="setSidebarTab('explorer')" title="Explorer (Workspace Files)">
+          <i class="ph ph-files"></i>
+        </button>
+        <button class="activity-btn" id="actBtnEditor" onclick="showEditorView()" title="Code Editor">
+          <i class="ph ph-code"></i>
+        </button>
+        <button class="activity-btn" id="actBtnForge" onclick="setSidebarTab('forge')" title="Software Forge & Generators">
+          <i class="ph ph-cube"></i>
+        </button>
+        <button class="activity-btn" id="actBtnFixer" onclick="setSidebarTab('fixer')" title="AI Bug Fixer & Diagnostics">
+          <i class="ph ph-bug"></i>
+        </button>
+        <button class="activity-btn" id="actBtnPreview" onclick="toggleLivePreview()" title="Live Web Sandbox Preview">
+          <i class="ph ph-browsers"></i>
+        </button>
+        <button class="activity-btn" id="actBtnEnterprise" onclick="toggleEnterpriseView()" title="TIA Enterprise Core (Attendance, Chat, Payslips, Invoices)">
+          <i class="ph ph-buildings"></i>
+        </button>
+        <div class="activity-btn-spacer"></div>
+        <button class="activity-btn" id="actBtnSidebarToggle" onclick="toggleSidebar()" title="Toggle Primary Side Bar (Ctrl+B)">
+          <i class="ph ph-sidebar-simple"></i>
+        </button>
+        <button class="activity-btn" id="actBtnTerminal" onclick="toggleBottomDock()" title="Integrated Terminal (Ctrl+`)">
+          <i class="ph ph-terminal-window"></i>
+        </button>
+        <button class="activity-btn" onclick="showAboutModal()" title="About & Settings">
+          <i class="ph ph-gear"></i>
+        </button>
+      </div>
+
+      <!-- Primary Sidebar -->
+      <div class="ide-sidebar" id="ideSidebar">
+        <!-- Sidebar Panel: Explorer -->
+        <div id="sidePanelExplorer" style="display:flex; flex-direction:column; height:100%;">
+          <div class="sidebar-header">
+            <span>Explorer : Workspace</span>
+            <div class="sidebar-actions">
+              <button class="icon-btn-sm" onclick="promptNewFile()" title="New File" aria-label="New File"><i class="ph ph-file-plus"></i></button>
+              <button class="icon-btn-sm" onclick="promptNewFolder()" title="New Folder" aria-label="New Folder"><i class="ph ph-folder-plus"></i></button>
+              <button class="icon-btn-sm" onclick="loadWorkspaceTree()" title="Refresh Tree" aria-label="Refresh Tree"><i class="ph ph-arrows-clockwise"></i></button>
+              <button class="icon-btn-sm" onclick="toggleSidebar()" title="Close Side Bar (Ctrl+B)" aria-label="Close Side Bar"><i class="ph ph-x"></i></button>
+            </div>
+          </div>
+          <div class="sidebar-content" id="workspaceTreeContainer">
+            <div class="tree-node active" onclick="openFileInEditor('index.html')" style="padding-left:14px;"><i class="ph ph-file-html icon-html"></i> index.html</div>
+            <div class="tree-node" onclick="openFileInEditor('style.css')" style="padding-left:14px;"><i class="ph ph-file-css icon-css"></i> style.css</div>
+            <div class="tree-node" onclick="openFileInEditor('app.js')" style="padding-left:14px;"><i class="ph ph-file-js icon-js"></i> app.js</div>
+            <div class="tree-node" onclick="openFileInEditor('cad_spur_gear.py')" style="padding-left:14px;"><i class="ph ph-file-py icon-py"></i> cad_spur_gear.py</div>
+            <div class="tree-node" onclick="openFileInEditor('robot_arm.py')" style="padding-left:14px;"><i class="ph ph-file-py icon-py"></i> robot_arm.py</div>
+            <div class="tree-node" onclick="openFileInEditor('README.md')" style="padding-left:14px;"><i class="ph ph-file-text"></i> README.md</div>
+          </div>
+        </div>
+
+        <!-- Sidebar Panel: Forge -->
+        <div id="sidePanelForge" style="display:none; flex-direction:column; height:100%;">
+          <div class="sidebar-header">
+            <span>Software Forge</span>
+            <button class="icon-btn-sm" onclick="toggleSidebar()" title="Close Side Bar" aria-label="Close Side Bar"><i class="ph ph-x"></i></button>
+          </div>
+          <div class="sidebar-content" style="padding:12px;">
+            <p style="font-size:0.78rem; color:var(--grey-medium); margin-bottom:12px;">
+              Generate complete project scaffolding into your local workspace in 1 click:
+            </p>
+            <div class="forge-quick-list" style="display:flex; flex-direction:column; gap:8px;">
+              <button class="btn-tool" onclick="forgeToWorkspace('web-app')" style="justify-content:flex-start; text-align:left;">
+                <i class="ph ph-globe" style="color:var(--blue-light);"></i> Modern Web Application
+              </button>
+              <button class="btn-tool" onclick="forgeToWorkspace('react-mobile')" style="justify-content:flex-start; text-align:left;">
+                <i class="ph ph-device-mobile" style="color:#a78bfa;"></i> React Native Mobile App
+              </button>
+              <button class="btn-tool" onclick="forgeToWorkspace('mechatronics-controller')" style="justify-content:flex-start; text-align:left;">
+                <i class="ph ph-cpu" style="color:var(--green-light);"></i> Mechatronics Controller
+              </button>
+              <button class="btn-tool" onclick="forgeToWorkspace('ai-agent')" style="justify-content:flex-start; text-align:left;">
+                <i class="ph ph-robot" style="color:#f59e0b;"></i> AI Multi-Agent Coordinator
+              </button>
+              <button class="btn-tool" onclick="forgeToWorkspace('cad-automation')" style="justify-content:flex-start; text-align:left;">
+                <i class="ph ph-compass-tool" style="color:#38bdf8;"></i> Parametric CAD Script
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar Panel: Bug Fixer -->
+        <div id="sidePanelFixer" style="display:none; flex-direction:column; height:100%;">
+          <div class="sidebar-header">
+            <span>AI Code Diagnoser</span>
+            <button class="icon-btn-sm" onclick="toggleSidebar()" title="Close Side Bar" aria-label="Close Side Bar"><i class="ph ph-x"></i></button>
+          </div>
+          <div class="sidebar-content" style="padding:12px;">
+            <p style="font-size:0.78rem; color:var(--grey-medium); margin-bottom:12px;">
+              Inspect active code for syntax anomalies, logic bugs, and mechatronics parameters:
+            </p>
+            <button class="btn-tool btn-tool-run" onclick="diagnoseActiveCode()" style="width:100%; justify-content:center; margin-bottom:14px;">
+              <i class="ph ph-magnifying-glass"></i> Diagnose Active File
+            </button>
+            <div id="fixerResultsContainer" style="font-size:0.8rem; color:var(--grey-light);">
+              Click 'Diagnose' to analyze active editor code.
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar Panel: Enterprise Quick-Nav -->
+        <div id="sidePanelEnterprise" style="display:none; flex-direction:column; height:100%;">
+          <div class="sidebar-header">
+            <span>Enterprise Suite</span>
+            <button class="icon-btn-sm" onclick="toggleSidebar()" title="Close Side Bar" aria-label="Close Side Bar"><i class="ph ph-x"></i></button>
+          </div>
+          <div class="sidebar-content" style="padding:12px;">
+            <p style="font-size:0.78rem; color:var(--grey-medium); margin-bottom:12px;">
+              Direct access to enterprise operations:
+            </p>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <button class="btn-tool" onclick="openEnterpriseTab('dashboard')" style="justify-content:flex-start;">
+                <i class="ph ph-squares-four" style="color:var(--blue-light);"></i> Dashboard & Attendance
+              </button>
+              <button class="btn-tool" onclick="openEnterpriseTab('communications')" style="justify-content:flex-start;">
+                <i class="ph ph-chats-circle" style="color:var(--green-light);"></i> Executive Messages
+              </button>
+              <button class="btn-tool" onclick="openEnterpriseTab('courses')" style="justify-content:flex-start;">
+                <i class="ph ph-graduation-cap" style="color:#f59e0b;"></i> Courses & Dealers Hub
+              </button>
+              <button class="btn-tool" onclick="openEnterpriseTab('students')" style="justify-content:flex-start;">
+                <i class="ph ph-student" style="color:#38bdf8;"></i> Students & Invoicing
+              </button>
+              <button class="btn-tool" onclick="openEnterpriseTab('payslips')" style="justify-content:flex-start;">
+                <i class="ph ph-receipt" style="color:#a78bfa;"></i> Payslip Management
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Draggable Sidebar Resizer Handle (Not Fixed Width) -->
+      <div class="sidebar-resizer" id="sidebarResizer" title="Drag to resize sidebar width (double click to reset)"></div>
+
+      <!-- Center Editor Dock -->
+      <div class="ide-editor-dock">
+        <!-- Editor Tabs Bar -->
+        <div class="ide-tabs-bar" id="ideTabsBar">
+          <div class="editor-tab active" data-path="index.html" onclick="openFileInEditor('index.html')">
+            <i class="ph ph-file-html icon-html"></i>
+            <span class="tab-title">index.html</span>
+          </div>
+        </div>
+
+        <!-- Editor Workstation (Editor + Live Preview Split) -->
+        <div class="editor-workspace-split" id="ideEditorCanvas">
+          <div class="ide-editor-container">
+            <div class="ide-gutter" id="ideGutter">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16</div>
+            <textarea class="ide-code-textarea" id="ideCodeEditor" spellcheck="false" placeholder="// Select a file from the Explorer to begin coding...">&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8"&gt;
+  &lt;title&gt;TIA Mechatronics &amp; AI App&lt;/title&gt;
+  &lt;link rel="stylesheet" href="style.css"&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;div class="card"&gt;
+    &lt;h1&gt;Tirupati Intellect Authority&lt;/h1&gt;
+    &lt;p&gt;Empowering Tirupati with AI, Robotics &amp; CAD Automation&lt;/p&gt;
+    &lt;button id="btnAction"&gt;Execute Kinematics&lt;/button&gt;
+  &lt;/div&gt;
+  &lt;script src="app.js"&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</textarea>
+          </div>
+
+          <!-- Live Web Preview Split -->
+          <div class="ide-split-preview" id="ideSplitPreview">
+            <div class="preview-header">
+              <span style="font-weight:700;"><i class="ph ph-browsers"></i> Live Web Runner</span>
+              <span class="preview-url-bar" id="previewUrlBar">https://tia-tirupati-intellect-authority.onrender.com/workspace/index.html</span>
+              <div style="display:flex; gap:6px;">
+                <button class="icon-btn-sm" onclick="reloadLivePreview()" title="Reload Preview (F5)" aria-label="Reload Preview (F5)"><i class="ph ph-arrows-clockwise"></i></button>
+                <button class="icon-btn-sm" onclick="toggleLivePreview()" title="Close Split" aria-label="Close Split"><i class="ph ph-x"></i></button>
+              </div>
+            </div>
+            <iframe id="previewIframe" class="preview-iframe" src="/workspace/index.html" sandbox="allow-scripts allow-modals allow-same-origin" title="Live Web Application Runner"></iframe>
+          </div>
+        </div>
+
+        <!-- Embedded Full Enterprise View Overlay -->
+        <div class="ide-enterprise-view" id="ideEnterpriseView">
+          <div class="enterprise-view-header">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <span class="badge badge-green">🏢 Enterprise Mode</span>
+              <h2 style="font-size:1.25rem; margin:0;">TIA Enterprise Studio</h2>
+              <span style="font-size:0.8rem; color:var(--grey-medium);">Tirupati Intellect Authority • GSTIN: 37EYLPM8018M1ZN</span>
+            </div>
+            <button class="btn-tool btn-tool-preview" onclick="hideEnterpriseView()">
+              <i class="ph ph-code"></i> Return to Code Workspace
+            </button>
+          </div>
+
+          <!-- ==================== EXECUTIVE HEADER ==================== -->
+          <header class="header-container">
+    <div class="header-top">
+      <div class="brand-section">
+        <div class="logo-frame">
+          <img src="/assets/tia_logo_circle.png" alt="TIA - Tirupati Intellect Authority Emblem" width="56" height="56" fetchpriority="high" decoding="async">
+        </div>
+        <div class="brand-info">
+          <h1><span class="text-gradient-blue">TIA</span> Enterprise Portal</h1>
+          <div class="brand-tagline">Tirupati Intellect Authority • Empowering Tirupati with AI</div>
+          <div class="brand-ceo" id="brandExecutiveSubtitle">CEO • M. Bhargav Rayudu | B.Tech Mechatronics • CAD Diploma</div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Live Clock -->
+        <div class="live-clock">
+          <i class="ph ph-clock" style="color: var(--blue-light);"></i>
+          <span id="headerClock">Tirupati Online • Live IST</span>
+        </div>
+
+        <!-- Role Login / User Display Button -->
+        <button class="btn-sm-action" id="btnHeaderLoginToggle" onclick="openLoginModal()" style="border-color: rgba(59, 130, 246, 0.4); padding: 8px 14px; font-weight: 700; color: var(--blue-light);" title="Login with Username/Email/Mobile + Password">
+          <i class="ph ph-user-switch" style="font-size: 1.1rem;"></i>
+          <span id="headerLoginBtnText">Role Login</span>
+        </button>
+
+        <!-- Download Mobile & Desktop App Button -->
+        <button class="btn-sm-action download-app-btn" id="btnHeaderDownloadApp" onclick="openDownloadAppModal()" style="border-color: rgba(16, 185, 129, 0.4); color: var(--green-light); padding: 8px 14px; font-weight: 700;" title="Download TIA Mobile & Desktop App">
+          <i class="ph ph-download-simple" style="font-size: 1.1rem;"></i>
+          <span>Download App</span>
+        </button>
+
+        <!-- Active User Profile Display -->
+        <div class="employee-switcher" id="activeUserBadgeContainer" title="Active Executive Session">
+          <span class="online-indicator offline" id="currentUserPresenceDot"></span>
+          <i class="ph ph-user-circle" style="font-size: 1.25rem; color: var(--blue-light);"></i>
+          <span id="activeUserBadgeText" style="font-size: 0.86rem; font-weight: 700; color: #ffffff;">Not Logged In</span>
+        </div>
+
+        <!-- Quick Check In / Check Out Direct Toggle -->
+        <button id="btnHeaderClock" class="btn-clock-action btn-clock-in" onclick="toggleClockAction()">
+          <i class="ph ph-fingerprint"></i>
+          <span id="clockBtnLabel">Check In</span>
+        </button>
+
+        <!-- Logout Action (Hidden when not logged in) -->
+        <button class="btn-sm-action" id="btnHeaderLogout" onclick="performLogout()" style="display: none; border-color: rgba(239, 68, 68, 0.4); color: #f87171;" title="Sign out of current role">
+          <i class="ph ph-sign-out"></i> Logout
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="nav-tab-btn active" onclick="switchTab('dashboard')">
+        <i class="ph ph-squares-four"></i> Dashboard & Attendance
+      </button>
+      <button class="nav-tab-btn" onclick="switchTab('communications')">
+        <i class="ph ph-chats-circle"></i> Executive Connect & Messages
+      </button>
+      <button class="nav-tab-btn" onclick="switchTab('software-forge')">
+        <i class="ph ph-code-block"></i> Software Forge & Dev Tools
+      </button>
+      <button class="nav-tab-btn" onclick="switchTab('courses')">
+        <i class="ph ph-graduation-cap"></i> Courses & Dealers/Clients Hub
+      </button>
+      <button class="nav-tab-btn" onclick="switchTab('students')">
+        <i class="ph ph-student"></i> Students & Invoicing / Receipts
+      </button>
+      <button class="nav-tab-btn" onclick="switchTab('payslips')">
+        <i class="ph ph-receipt"></i> Employees Payslip Management
+      </button>
+    </nav>
+  </header>
+
+  <!-- ==================== MAIN CONTENT AREA ==================== -->
+  <div class="main-content" id="enterpriseMainContent">
+
+    <!-- 1. DASHBOARD & ATTENDANCE TAB -->
+    <div id="tab-dashboard" class="tab-pane active">
+      <!-- Top Status Banner -->
+      <div class="card" style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(9, 14, 26, 0.95) 100%); border-color: rgba(59, 130, 246, 0.35);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 18px;">
+          <div>
+            <h2 style="font-size: 1.35rem; margin-bottom: 4px;">
+              Welcome to <span class="text-gradient-blue">TIA Enterprise Portal</span>:
+              <span id="bannerUserName" style="color: var(--white-pure); font-weight: 800;">Awaiting Login</span>
+            </h2>
+            <p style="color: var(--grey-medium); font-size: 0.88rem;">
+              Tirupati Intellect Authority • High-Performance AI & Mechatronics Workplace
+            </p>
+          </div>
+          <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <div style="text-align: right;">
+              <div style="font-size: 0.74rem; color: var(--grey-medium); text-transform: uppercase; font-weight: 600;">Shift Status</div>
+              <div style="font-weight: 700; color: var(--grey-light); display: flex; align-items: center; gap: 6px; justify-content: flex-end;" id="bannerSessionStatusContainer">
+                <span class="online-indicator offline" id="bannerSessionDot"></span>
+                <span id="bannerSessionStatus">Checked Out • Off Shift</span>
+              </div>
+            </div>
+
+            <!-- Direct 1-Click Check In / Check Out -->
+            <button class="btn-clock-action btn-clock-in" id="btnDashboardCheckIn" onclick="toggleClockAction()">
+              <i class="ph ph-fingerprint"></i> <span id="dashboardClockBtnLabel">Check In Now</span>
+            </button>
+            <button class="btn-sm-action" onclick="openClockModal()" title="Custom shift mode, location & notes">
+              <i class="ph ph-sliders"></i> Shift Options
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Real-Time Team Presence Matrix -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="ph ph-users-three" style="color: var(--blue-light);"></i>
+            Executive Presence Roster (Online Tracker)
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center;" id="presenceRosterHeaderActions">
+            <button class="btn-sm-action" id="btnRosterAddRole" onclick="openAddRoleModal()" style="display: inline-flex; border-color: rgba(59,130,246,0.5); color: var(--blue-light); font-weight: 700;" title="Add New Staff / Role (Authorities: CEO / Office Manager / P.A)">
+              <i class="ph ph-plus-circle"></i> Add Staff / Role
+            </button>
+            <span class="badge badge-green"><span class="online-indicator online" style="width: 7px; height: 7px;"></span> Live Tracking</span>
+            <span class="badge badge-blue" id="onlineCountBadge">0 Online</span>
+          </div>
+        </div>
+
+        <div class="employee-grid" id="employeeGrid">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+
+      <!-- Executive Attendance Records -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="ph ph-fingerprint" style="color: var(--green-light);"></i>
+            Executive Attendance & Shift Records
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <button class="btn-sm-action" onclick="exportAttendanceCSV()">
+              <i class="ph ph-file-csv"></i> Export Attendance CSV
+            </button>
+            <button class="btn-sm-action" id="btnClearAttendance" onclick="clearAttendanceLog()" style="border-color: rgba(239, 68, 68, 0.4); color: #f87171;" title="Clear Attendance Log (Authority: CEO / P.A / Office Manager)">
+              <i class="ph ph-trash"></i> Clear Attendance Log
+            </button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Personnel</th>
+                <th>Role & Dept</th>
+                <th>Date</th>
+                <th>Clock In</th>
+                <th>Clock Out</th>
+                <th>Work Mode & Location</th>
+                <th>Shift Duration</th>
+                <th>Attendance Status</th>
+                <th style="text-align: center;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="attendanceTableBody">
+              <!-- Populated dynamically via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. EXECUTIVE CONNECT & MESSAGES TAB -->
+    <div id="tab-communications" class="tab-pane">
+      <div class="chat-layout">
+        <!-- Sidebar: Executive Channels & Internal Staff Messaging -->
+        <div class="chat-sidebar">
+          <div style="padding: 16px 18px 12px 18px; border-bottom: 1px solid var(--border-subtle); background: rgba(15, 23, 42, 0.9);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <h3 style="font-size: 0.98rem; display: flex; align-items: center; gap: 8px;">
+                <i class="ph ph-chat-teardrop-dots" style="color: var(--blue-light);"></i> Enterprise Messaging
+              </h3>
+              <span id="chatActiveUserStatusBadge" class="badge badge-green" style="font-size: 0.65rem;">Active</span>
+            </div>
+            <p style="font-size: 0.74rem; color: var(--grey-medium); margin-top: 2px;">
+              Internal communication between all staff & leadership
+            </p>
+            <div style="margin-top: 10px;">
+              <input type="text" class="form-control" id="chatSearchInput" placeholder="🔍 Search staff or channel..." oninput="filterChatChannels(this.value)" style="height: 32px; font-size: 0.78rem; padding: 4px 10px; background: rgba(0,0,0,0.3);">
+            </div>
+          </div>
+
+          <div class="chat-channel-list">
+            <!-- Company Stream -->
+            <div class="chat-section-label" style="padding: 10px 16px 4px 16px; font-size: 0.68rem; font-weight: 800; color: var(--grey-medium); letter-spacing: 0.08em; text-transform: uppercase;">
+              Company Channels
+            </div>
+
+            <div class="channel-item active" id="chan-general" onclick="selectChannel('general')">
+              <span class="emp-avatar" style="width: 38px; height: 38px; font-size: 1.2rem;">
+                🌐
+                <span class="status-dot online-indicator online"></span>
+              </span>
+              <div class="channel-info">
+                <h4>TIA All-Hands Stream</h4>
+                <p>Company-wide communications</p>
+              </div>
+            </div>
+
+            <!-- Leadership Desks -->
+            <div class="chat-section-label" style="padding: 12px 16px 4px 16px; font-size: 0.68rem; font-weight: 800; color: var(--grey-medium); letter-spacing: 0.08em; text-transform: uppercase; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 4px;">
+              Executive Desks
+            </div>
+
+            <div class="channel-item" id="chan-role_ceo" onclick="openDirectStaffChat('role_ceo')">
+              <span class="emp-avatar" style="width: 38px; height: 38px; font-size: 1.2rem;">
+                👑
+                <span class="status-dot online-indicator offline" id="dot-chan-role_ceo"></span>
+              </span>
+              <div class="channel-info">
+                <h4>CEO Desk</h4>
+                <p>Executive Leadership</p>
+              </div>
+            </div>
+
+            <div class="channel-item" id="chan-role_cmo" onclick="openDirectStaffChat('role_cmo')">
+              <span class="emp-avatar" style="width: 38px; height: 38px; font-size: 1.2rem;">
+                📈
+                <span class="status-dot online-indicator offline" id="dot-chan-role_cmo"></span>
+              </span>
+              <div class="channel-info">
+                <h4>CMO Desk</h4>
+                <p>Marketing & Global Strategy</p>
+              </div>
+            </div>
+
+            <div class="channel-item" id="chan-role_pm" onclick="openDirectStaffChat('role_pm')">
+              <span class="emp-avatar" style="width: 38px; height: 38px; font-size: 1.2rem;">
+                🛠️
+                <span class="status-dot online-indicator offline" id="dot-chan-role_pm"></span>
+              </span>
+              <div class="channel-info">
+                <h4>Project Manager</h4>
+                <p>Software Engineering Delivery</p>
+              </div>
+            </div>
+
+            <div class="channel-item" id="chan-role_tech_mgr" onclick="openDirectStaffChat('role_tech_mgr')">
+              <span class="emp-avatar" style="width: 38px; height: 38px; font-size: 1.2rem;">
+                ⚙️
+                <span class="status-dot online-indicator offline" id="dot-chan-role_tech_mgr"></span>
+              </span>
+              <div class="channel-info">
+                <h4>Technical Manager</h4>
+                <p>Mechatronics & Robotics Lab</p>
+              </div>
+            </div>
+
+            <div class="channel-item" id="chan-role_pa" onclick="openDirectStaffChat('role_pa')">
+              <span class="emp-avatar" style="width: 38px; height: 38px; font-size: 1.2rem;">
+                📋
+                <span class="status-dot online-indicator offline" id="dot-chan-role_pa"></span>
+              </span>
+              <div class="channel-info">
+                <h4>P.A (Personal Assistant)</h4>
+                <p>Executive Office & Coordination</p>
+              </div>
+            </div>
+
+            <div class="channel-item" id="chan-role_office_mgr" onclick="openDirectStaffChat('role_office_mgr')">
+              <span class="emp-avatar" style="width: 38px; height: 38px; font-size: 1.2rem;">
+                🏢
+                <span class="status-dot online-indicator offline" id="dot-chan-role_office_mgr"></span>
+              </span>
+              <div class="channel-info">
+                <h4>Office Manager</h4>
+                <p>Administration & Operations</p>
+              </div>
+            </div>
+
+            <!-- Dynamic Internal Staff (1:1 Direct Messages) -->
+            <div class="chat-section-label" style="padding: 14px 16px 4px 16px; font-size: 0.68rem; font-weight: 800; color: var(--blue-light); letter-spacing: 0.08em; text-transform: uppercase; border-top: 1px solid rgba(255,255,255,0.08); margin-top: 4px; display: flex; justify-content: space-between; align-items: center;">
+              <span>Staff Colleagues (Direct 1:1)</span>
+              <span id="staffDirectCountBadge" class="badge badge-blue" style="font-size:0.6rem; padding: 2px 6px;">0</span>
+            </div>
+            <div id="chatStaffDirectList">
+              <!-- Populated dynamically via JS from state.employees -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div class="chat-main">
+          <div class="chat-header">
+            <div>
+              <h3 id="currentChannelTitle" style="font-size: 1.08rem;">CEO Desk</h3>
+              <p id="currentChannelSubtitle" style="font-size: 0.76rem; color: var(--blue-light);">
+                🟢 Online in Portal • Direct Desk
+              </p>
+            </div>
+
+            <div class="exec-quick-links" id="channelDirectActions">
+              <a href="https://wa.me/919494123456" target="_blank" class="btn-sm-action btn-sm-whatsapp" id="btnChannelWhatsApp">
+                <i class="ph ph-whatsapp-logo"></i> WhatsApp Connect
+              </a>
+              <a href="tel:+919494123456" class="btn-sm-action" id="btnChannelCall">
+                <i class="ph ph-phone-call"></i> Call Mobile
+              </a>
+            </div>
+          </div>
+
+          <div class="chat-messages" id="chatMessagesStream">
+            <!-- Messages render here -->
+          </div>
+
+          <!-- Pending File Attachment Preview Banner -->
+          <div id="pendingAttachmentBanner" style="display: none; padding: 12px 24px; background: rgba(37, 99, 235, 0.12); border-top: 1px solid rgba(59, 130, 246, 0.3); align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <i class="ph ph-file-arrow-up" style="font-size: 1.35rem; color: var(--blue-light);"></i>
+              <div>
+                <div id="pendingFileName" style="font-size: 0.84rem; font-weight: 700;">file.pdf</div>
+                <div id="pendingFileSize" style="font-size: 0.72rem; color: var(--blue-light);">2.4 MB</div>
+              </div>
+            </div>
+            <button onclick="clearPendingAttachment()" class="btn-sm-action" style="background: transparent; color: var(--red-danger); border: none;">
+              <i class="ph ph-x"></i> Remove
+            </button>
+          </div>
+
+          <!-- Pending Voice Note Preview -->
+          <div id="pendingVoiceBanner" style="display: none; padding: 12px 24px; background: rgba(16, 185, 129, 0.12); border-top: 1px solid rgba(16, 185, 129, 0.3); align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <i class="ph ph-waveform" style="font-size: 1.35rem; color: var(--green-light);"></i>
+              <div>
+                <div style="font-size: 0.84rem; font-weight: 700;">Voice Note Recorded</div>
+                <audio id="previewAudioElement" controls style="height: 28px; width: 230px;"></audio>
+              </div>
+            </div>
+            <button onclick="clearPendingVoice()" class="btn-sm-action" style="background: transparent; color: var(--red-danger); border: none;">
+              <i class="ph ph-x"></i> Discard
+            </button>
+          </div>
+
+          <!-- Replying To Banner for Interactive Internal Messaging -->
+          <div id="replyingToBanner" style="display: none; padding: 8px 18px; background: rgba(37, 99, 235, 0.18); border-top: 1px solid rgba(59, 130, 246, 0.4); align-items: center; justify-content: space-between; font-size: 0.82rem;">
+            <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
+              <i class="ph ph-arrow-bend-up-left" style="color: var(--blue-light); font-size: 1.1rem;"></i>
+              <span style="color: var(--grey-medium);">Replying to <strong id="replyingToAuthor" style="color: var(--blue-light);">Staff</strong>:</span>
+              <span id="replyingToSnippet" style="color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px;"></span>
+            </div>
+            <button onclick="cancelReply()" class="btn-sm-action" style="background: transparent; color: var(--grey-light); border: none; padding: 2px 6px; cursor: pointer;" title="Cancel Reply">
+              <i class="ph ph-x"></i>
+            </button>
+          </div>
+
+          <div class="chat-footer">
+            <div class="chat-input-row">
+              <input type="file" id="fileUploadInput" style="display: none;" onchange="handleFileSelect(event)">
+              <button class="btn-icon" onclick="document.getElementById('fileUploadInput').click()" title="Send Big or Small Files (CAD, Zip, PDF, Video)">
+                <i class="ph ph-paperclip"></i>
+              </button>
+
+              <button class="btn-icon" id="btnVoiceRecord" onclick="toggleVoiceRecording()" title="Record Audio Voice Note">
+                <i class="ph ph-microphone"></i>
+              </button>
+
+              <button class="btn-icon" id="btnSpeechDictation" onclick="toggleVoiceDictation()" title="Speak to Dictate (Speech Recognition)">
+                <i class="ph ph-waveform"></i>
+              </button>
+
+              <input type="text" id="chatMessageInput" placeholder="Type a message or click mic to speak..." onkeydown="handleChatKeyDown(event)">
+
+              <button class="btn-send" onclick="sendChatMessage()">
+                <span>Send</span>
+                <i class="ph ph-paper-plane-right"></i>
+              </button>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--grey-medium);">
+              <span>💡 Files up to 2GB • Audio voice notes • Direct WhatsApp integration</span>
+              <span id="speechStatusHint">Voice dictation ready</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. SOFTWARE FORGE & DEV / FIX TOOLS TAB -->
+    <div id="tab-software-forge" class="tab-pane">
+      <div class="card" style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(9, 14, 26, 0.98) 100%); border-color: rgba(59, 130, 246, 0.4);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+          <div>
+            <div class="badge badge-blue" style="margin-bottom: 6px;">TIA Software Forge & Diagnostic Engine</div>
+            <h2 style="font-size: 1.45rem;">
+              Create, Develop & <span class="text-gradient-green">Fix Any Software</span>
+            </h2>
+            <p style="color: var(--grey-light); font-size: 0.88rem; max-width: 850px;">
+              Scaffold enterprise architectures, generate automated mechatronics scripts, and run diagnostics to automatically repair broken code.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <!-- Left: Software Creation Studio -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <i class="ph ph-laptop" style="color: var(--blue-light);"></i>
+              Software Creation Wizard
+            </div>
+            <span class="badge badge-blue">Generation Studio</span>
+          </div>
+
+          <div class="form-group">
+            <label>Select Architecture Category:</label>
+            <select class="form-control" id="scaffoldType">
+              <option value="web-app">🌐 Full-Stack Enterprise AI Web Application (Node.js + React)</option>
+              <option value="ai-agent">🧠 Autonomous AI Multi-Agent Coordinator (Python / LLM)</option>
+              <option value="mechatronics-controller">⚙️ Industrial Mechatronics Controller (C++ / Arduino)</option>
+              <option value="cad-automation">📐 Parametric CAD & SolidWorks Script (Python CAD API)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Project Name:</label>
+            <input type="text" class="form-control" id="scaffoldProjectName" value="tia-autonomous-system">
+          </div>
+
+          <div class="form-group">
+            <label>Description & Architectural Goals:</label>
+            <textarea class="form-control" id="scaffoldDescription" rows="3">Automated sensor telemetry and computer vision inference for high-precision sorting.</textarea>
+          </div>
+
+          <button class="btn-send" style="width: 100%; justify-content: center;" onclick="generateSoftwareScaffold()">
+            <i class="ph ph-lightning"></i> Scaffold & Build Software Architecture
+          </button>
+
+          <div id="scaffoldResultsView" style="display: none; margin-top: 18px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <h4 style="font-size: 0.9rem; color: var(--blue-light);">Generated Package:</h4>
+              <button class="btn-sm-action" onclick="downloadScaffoldBundle()">
+                <i class="ph ph-download-simple"></i> Download Bundle
+              </button>
+            </div>
+            <div id="scaffoldFilesTabs" style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap;"></div>
+            <textarea id="scaffoldCodeDisplay" class="code-editor-box" readonly style="height: 220px;"></textarea>
+          </div>
+        </div>
+
+        <!-- Right: Intelligent Code Bug Fixer -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <i class="ph ph-wrench" style="color: var(--green-light);"></i>
+              Code Diagnoser & Bug Fixer
+            </div>
+            <span class="badge badge-green">Diagnostic Engine</span>
+          </div>
+
+          <div class="form-group">
+            <label>Programming Language / Framework:</label>
+            <select class="form-control" id="fixLanguage">
+              <option value="javascript">JavaScript / Node.js</option>
+              <option value="python">Python 3</option>
+              <option value="cpp">C++ / Mechatronics Arduino</option>
+              <option value="html">HTML5 / Web Frontend</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Paste Any Broken Code / Software with Errors:</label>
+            <textarea id="fixInputCode" class="code-editor-box" placeholder="// Paste code with bugs here..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Observed Error or Bug Behavior:</label>
+            <input type="text" id="fixErrorDescription" class="form-control" placeholder="e.g. Unhandled promise, memory leak, syntax error...">
+          </div>
+
+          <div style="display: flex; gap: 10px;">
+            <button class="btn-send" style="flex: 1; justify-content: center;" onclick="runSoftwareDiagnostic()">
+              <i class="ph ph-bug"></i> Inspect & Fix Software
+            </button>
+            <button class="btn-sm-action" onclick="loadSampleBuggyCode()">
+              <i class="ph ph-sparkle"></i> Load Sample Bug
+            </button>
+          </div>
+
+          <div id="diagnosticResultsArea" style="display: none; margin-top: 18px;">
+            <div class="card" style="background: #020617; border-color: rgba(59, 130, 246, 0.4); padding: 14px; margin-bottom: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span class="badge badge-green" id="diagStatusBadge">Fixed Bugs</span>
+                <span style="font-size: 0.75rem; color: var(--grey-medium);" id="diagIssueCount">Issues Repaired</span>
+              </div>
+              <p id="diagExplanation" style="font-size: 0.82rem; color: #cbd5e1;"></p>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-size: 0.82rem; font-weight: 700; color: #34d399;">
+                <i class="ph ph-check-circle"></i> Corrected & Optimized Source:
+              </span>
+              <div style="display: flex; gap: 6px;">
+                <button class="btn-sm-action" onclick="copyFixedCode()">
+                  <i class="ph ph-copy"></i> Copy
+                </button>
+                <button class="btn-sm-action" onclick="sendFixedCodeToSandbox()">
+                  <i class="ph ph-play"></i> Run in Sandbox
+                </button>
+              </div>
+            </div>
+            <textarea id="diagCorrectedCode" class="code-editor-box" readonly style="height: 180px; color: #34d399;"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Interactive Sandbox -->
+      <div class="card" style="margin-top: 24px;">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="ph ph-play-circle" style="color: var(--blue-light);"></i>
+            Interactive Live Sandbox & Preview Frame
+          </div>
+          <button class="btn-send" style="height: 38px;" onclick="executeSandboxCode()">
+            <i class="ph ph-play"></i> Run Code Live
+          </button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div>
+            <label style="font-size: 0.82rem; color: var(--grey-light); margin-bottom: 5px; display: block;">HTML / JS / CSS Source:</label>
+            <textarea id="sandboxCodeInput" class="code-editor-box" style="height: 250px;"><div style="padding:24px; background:#0f172a; color:#f8fafc; font-family:sans-serif; border-radius:12px; border:2px solid #2563eb; text-align:center;">
+  <h2 style="color:#60a5fa; margin-bottom:8px;">TIA Mechatronics & AI Live Preview</h2>
+  <p style="color:#cbd5e1; margin-bottom:16px;">Execution in Tirupati Intellect Authority Portal.</p>
+  <button onclick="alert('System operational!')" style="padding:10px 22px; background:#2563eb; color:#ffffff; font-weight:bold; border:none; border-radius:8px; cursor:pointer;">
+    Trigger Telemetry
+  </button>
+</div></textarea>
+          </div>
+          <div>
+            <label style="font-size: 0.82rem; color: var(--grey-light); margin-bottom: 5px; display: block;">Live Isolated Output:</label>
+            <iframe id="sandboxPreviewFrame" style="width: 100%; height: 250px; background: #ffffff; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. COURSES & DEALERS/CLIENTS HUB TAB -->
+    <div id="tab-courses" class="tab-pane">
+      <!-- Tab Header with Sub-Navigation Switcher -->
+      <div class="card" style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(9, 14, 26, 0.98) 100%); border-color: rgba(59, 130, 246, 0.4);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+          <div>
+            <div class="badge badge-blue" style="margin-bottom: 6px;">TIA Academy & Commercial Architecture</div>
+            <h2 style="font-size: 1.45rem;">Courses & Enterprise Dealers / Clients Hub</h2>
+            <p style="color: var(--grey-medium); font-size: 0.88rem;">
+              Technical certifications, enterprise client categories, contract types, and distribution dealer networks.
+            </p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="nav-tab-btn active" id="btnCourseSubCatalog" onclick="switchCourseSubView('catalog')" style="padding: 10px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+              <i class="ph ph-graduation-cap"></i> Technical Courses
+            </button>
+            <button class="nav-tab-btn" id="btnCourseSubDealers" onclick="switchCourseSubView('dealers')" style="padding: 10px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+              <i class="ph ph-handshake"></i> Dealers, Clients & Contracts (DEALERS/CLIENTS)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW A: Technical Courses Grid -->
+      <div id="courseCatalogView">
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 16px;">
+          <button class="btn-send" onclick="openAddCourseModal()">
+            <i class="ph ph-plus-circle"></i> Create New Course
+          </button>
+        </div>
+        <div class="courses-grid" id="coursesGridContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 22px;">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+
+      <!-- VIEW B: DEALERS, CLIENTS & CONTRACTS ARCHITECTURE (Exact specification added) -->
+      <div id="courseDealersView" style="display: none;">
+        <!-- Section 1: Types of Customers & Clients -->
+        <div class="card" style="border-left: 4px solid var(--blue-vibrant); margin-bottom: 24px;">
+          <div class="card-header">
+            <div class="card-title">
+              <i class="ph ph-users" style="color: var(--blue-light);"></i>
+              ## 1. Types of Customers & Clients
+            </div>
+            <span class="badge badge-blue">Client Classifications</span>
+          </div>
+
+          <div class="dealers-grid">
+            <!-- By Business Model & Size -->
+            <div class="dealer-category-card">
+              <div class="dealer-card-header">
+                <i class="ph ph-buildings" style="font-size: 1.4rem; color: var(--blue-light);"></i>
+                <h4 style="font-size: 1rem;">By Business Model & Size</h4>
+              </div>
+              <ul class="dealer-items-list">
+                <li><i class="ph ph-check"></i> <strong>Large Enterprises & Corporations (B2B)</strong></li>
+                <li><i class="ph ph-check"></i> <strong>Small and Medium-Sized Enterprises (SMEs / SMBs)</strong></li>
+                <li><i class="ph ph-check"></i> <strong>Startups & Early-Stage Ventures</strong></li>
+                <li><i class="ph ph-check"></i> <strong>Individual Consumers & End-Users (B2C)</strong></li>
+              </ul>
+            </div>
+
+            <!-- By Sector -->
+            <div class="dealer-category-card">
+              <div class="dealer-card-header">
+                <i class="ph ph-bank" style="font-size: 1.4rem; color: var(--green-light);"></i>
+                <h4 style="font-size: 1rem;">By Sector</h4>
+              </div>
+              <ul class="dealer-items-list">
+                <li class="green-accent"><i class="ph ph-check"></i> <strong>Government & Public Sector Units (B2G / PSUs)</strong></li>
+                <li class="green-accent"><i class="ph ph-check"></i> <strong>Non-Profit & Non-Governmental Organizations (NGOs / NPOs)</strong></li>
+                <li class="green-accent"><i class="ph ph-check"></i> <strong>Educational, Healthcare & Research Institutions</strong></li>
+              </ul>
+            </div>
+
+            <!-- By Solution Need -->
+            <div class="dealer-category-card">
+              <div class="dealer-card-header">
+                <i class="ph ph-cpu" style="font-size: 1.4rem; color: var(--blue-vibrant);"></i>
+                <h4 style="font-size: 1rem;">By Solution Need</h4>
+              </div>
+              <ul class="dealer-items-list">
+                <li><i class="ph ph-check"></i> <strong>Bespoke / Custom Software Clients</strong></li>
+                <li><i class="ph ph-check"></i> <strong>SaaS & Off-the-Shelf Product Subscribers</strong></li>
+                <li><i class="ph ph-check"></i> <strong>Legacy System Modernization Clients</strong></li>
+                <li><i class="ph ph-check"></i> <strong>Staff Augmentation / Outsourced Engineering Clients</strong></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Types of Software Contracts -->
+        <div class="card" style="border-left: 4px solid var(--green-primary); margin-bottom: 24px;">
+          <div class="card-header">
+            <div class="card-title">
+              <i class="ph ph-file-text" style="color: var(--green-light);"></i>
+              ## 2. Types of Software Contracts
+            </div>
+            <span class="badge badge-green">Legal & Commercial Frameworks</span>
+          </div>
+
+          <div class="dealers-grid">
+            <!-- Project Delivery & Pricing Contracts -->
+            <div class="dealer-category-card">
+              <div class="dealer-card-header">
+                <i class="ph ph-currency-circle-dollar" style="font-size: 1.4rem; color: var(--green-light);"></i>
+                <h4 style="font-size: 1rem;">Project Delivery & Pricing Contracts</h4>
+              </div>
+              <ul class="dealer-items-list">
+                <li class="green-accent"><i class="ph ph-check"></i> <strong>Fixed-Price (Lump Sum) Contract</strong></li>
+                <li class="green-accent"><i class="ph ph-check"></i> <strong>Time and Materials (T&M) Contract</strong></li>
+                <li class="green-accent"><i class="ph ph-check"></i> <strong>Dedicated Team / Monthly Retainer Contract</strong></li>
+                <li class="green-accent"><i class="ph ph-check"></i> <strong>Milestone-Based / Phased Delivery Contract</strong></li>
+                <li class="green-accent"><i class="ph ph-check"></i> <strong>Build-Operate-Transfer (BOT) Contract</strong></li>
+              </ul>
+            </div>
+
+            <!-- Licensing & Usage Agreements -->
+            <div class="dealer-category-card">
+              <div class="dealer-card-header">
+                <i class="ph ph-key" style="font-size: 1.4rem; color: var(--blue-light);"></i>
+                <h4 style="font-size: 1rem;">Licensing & Usage Agreements</h4>
+              </div>
+              <ul class="dealer-items-list">
+                <li><i class="ph ph-check"></i> <strong>Software as a Service (SaaS) Subscription Agreement</strong></li>
+                <li><i class="ph ph-check"></i> <strong>End-User License Agreement (EULA)</strong></li>
+                <li><i class="ph ph-check"></i> <strong>Enterprise License Agreement (ELA)</strong></li>
+                <li><i class="ph ph-check"></i> <strong>Perpetual / On-Premise License Agreement</strong></li>
+                <li><i class="ph ph-check"></i> <strong>Open-Source & Commercial Dual-License Agreement</strong></li>
+              </ul>
+            </div>
+
+            <!-- Operational, Support & Legal Agreements -->
+            <div class="dealer-category-card">
+              <div class="dealer-card-header">
+                <i class="ph ph-shield-check" style="font-size: 1.4rem; color: var(--white-pure);"></i>
+                <h4 style="font-size: 1rem;">Operational, Support & Legal Agreements</h4>
+              </div>
+              <ul class="dealer-items-list">
+                <li><i class="ph ph-check"></i> <strong>Master Services Agreement (MSA)</strong></li>
+                <li><i class="ph ph-check"></i> <strong>Statement of Work (SOW)</strong></li>
+                <li><i class="ph ph-check"></i> <strong>Service Level Agreement (SLA)</strong></li>
+                <li><i class="ph ph-check"></i> <strong>Annual Maintenance & Support Contract (AMC)</strong></li>
+                <li><i class="ph ph-check"></i> <strong>Non-Disclosure & IP Assignment Agreement (NDA)</strong></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Types of Dealers, Partners & Channels -->
+        <div class="card" style="border-left: 4px solid var(--blue-light); margin-bottom: 24px;">
+          <div class="card-header">
+            <div class="card-title">
+              <i class="ph ph-network" style="color: var(--blue-light);"></i>
+              ## 3. Types of Dealers, Partners & Channels
+            </div>
+            <span class="badge badge-blue">Distribution Channels</span>
+          </div>
+
+          <div class="dealers-grid">
+            <!-- Sales & Distribution Channels -->
+            <div class="dealer-category-card">
+              <div class="dealer-card-header">
+                <i class="ph ph-shopping-bag" style="font-size: 1.4rem; color: var(--blue-light);"></i>
+                <h4 style="font-size: 1rem;">Sales & Distribution Channels</h4>
+              </div>
+              <ul class="dealer-items-list">
+                <li><i class="ph ph-check"></i> <strong>Authorized Software Distributors</strong></li>
+                <li><i class="ph ph-check"></i> <strong>Value-Added Resellers (VARs)</strong></li>
+                <li><i class="ph ph-check"></i> <strong>Direct Market Resellers (DMRs)</strong></li>
+                <li><i class="ph ph-check"></i> <strong>Affiliate, Referral & Broker Partners</strong></li>
+              </ul>
+            </div>
+
+            <!-- Technical & Service Delivery Partners -->
+            <div class="dealer-category-card">
+              <div class="dealer-card-header">
+                <i class="ph ph-gear-six" style="font-size: 1.4rem; color: var(--green-light);"></i>
+                <h4 style="font-size: 1rem;">Technical & Service Delivery Partners</h4>
+              </div>
+              <ul class="dealer-items-list">
+                <li class="green-accent"><i class="ph ph-check"></i> <strong>System Integrators (Local & Global SIs)</strong></li>
+                <li class="green-accent"><i class="ph ph-check"></i> <strong>Managed Service Providers (MSPs)</strong></li>
+                <li class="green-accent"><i class="ph ph-check"></i> <strong>Certified Implementation & Onboarding Partners</strong></li>
+                <li class="green-accent"><i class="ph ph-check"></i> <strong>IT Consulting & Advisory Partners</strong></li>
+              </ul>
+            </div>
+
+            <!-- Product & Co-Branding Partners -->
+            <div class="dealer-category-card">
+              <div class="dealer-card-header">
+                <i class="ph ph-tag" style="font-size: 1.4rem; color: var(--blue-vibrant);"></i>
+                <h4 style="font-size: 1rem;">Product & Co-Branding Partners</h4>
+              </div>
+              <ul class="dealer-items-list">
+                <li><i class="ph ph-check"></i> <strong>White-Label / Private-Label Resellers</strong></li>
+                <li><i class="ph ph-check"></i> <strong>Original Equipment Manufacturer (OEM) Partners</strong></li>
+                <li><i class="ph ph-check"></i> <strong>Independent Software Vendors (ISVs) & Marketplace Partners</strong></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. STUDENTS & INVOICING / RECEIPTS TAB -->
+    <div id="tab-students" class="tab-pane">
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <span class="kpi-label">Total Registered Students</span>
+          <span class="kpi-num text-gradient-blue" id="kpiTotalStudents">0</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Active Ongoing Students</span>
+          <span class="kpi-num" style="color: var(--blue-light);" id="kpiOngoingStudents">0</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Completed & Certified Alumni</span>
+          <span class="kpi-num" style="color: var(--green-light);" id="kpiCompletedStudents">0</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Total Fees Collected</span>
+          <span class="kpi-num" style="color: var(--green-primary);" id="kpiFeesCollected">₹0</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <button class="nav-tab-btn active" id="btnStudentSubOngoing" onclick="switchStudentSubTab('ongoing')" style="padding: 8px 16px; font-size: 0.88rem;">
+              <i class="ph ph-hourglass"></i> Ongoing Students Registry
+            </button>
+            <button class="nav-tab-btn" id="btnStudentSubCompleted" onclick="switchStudentSubTab('completed')" style="padding: 8px 16px; font-size: 0.88rem;">
+              <i class="ph ph-check-circle"></i> Completed Students Archive (Auto-Shifted)
+            </button>
+          </div>
+
+          <div>
+            <button class="btn-send" style="height: 40px;" onclick="openAddStudentModal()">
+              <i class="ph ph-user-plus"></i> Enroll Student (Admin)
+            </button>
+          </div>
+        </div>
+
+        <div id="subview-ongoing-students" class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Student ID & Name</th>
+                <th>Course Name</th>
+                <th>Batch Duration (Start - End)</th>
+                <th>Total Fees</th>
+                <th>Paid</th>
+                <th>Balance Due</th>
+                <th>Payment Status</th>
+                <th>Invoice & Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ongoingStudentsTableBody">
+              <!-- Populated dynamically via JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <div id="subview-completed-students" class="table-responsive" style="display: none;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Student ID & Name</th>
+                <th>Completed Course</th>
+                <th>Completion Date</th>
+                <th>Total Fees Paid</th>
+                <th>Certificate ID</th>
+                <th>Academic Status</th>
+                <th>Printable Documents</th>
+              </tr>
+            </thead>
+            <tbody id="completedStudentsTableBody">
+              <!-- Populated dynamically via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. EMPLOYEES PAYSLIP MANAGEMENT TAB (NEW MODULE) -->
+    <div id="tab-payslips" class="tab-pane">
+      <div class="card" style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(9, 14, 26, 0.98) 100%); border-color: rgba(16, 185, 129, 0.4);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+          <div>
+            <div class="badge badge-green" style="margin-bottom: 6px;">Remuneration & Compensation</div>
+            <h2 style="font-size: 1.45rem;">Employees Payslip Management</h2>
+            <p style="color: var(--grey-medium); font-size: 0.88rem;">
+              Issue, calculate, and print monthly salary slips with base salary, commissions, and CEO verification.
+            </p>
+          </div>
+          <div>
+            <button class="btn-send" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-color: rgba(16, 185, 129, 0.4);" onclick="openAddPayslipModal()">
+              <i class="ph ph-plus-circle"></i> Generate Employee Payslip
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <span class="kpi-label">Total Payslips Issued</span>
+          <span class="kpi-num text-gradient-green" id="kpiPayslipCount">0</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Base Salaries Disbursed</span>
+          <span class="kpi-num" style="color: var(--blue-light);" id="kpiTotalBaseSalary">₹0</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Extra Commission Disbursed</span>
+          <span class="kpi-num" style="color: var(--green-light);" id="kpiTotalCommissions">₹0</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Total Net Compensation</span>
+          <span class="kpi-num" style="color: var(--white-pure);" id="kpiTotalGrossPayout">₹0</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="ph ph-receipt" style="color: var(--green-light);"></i>
+            Disbursed Payslips Register
+          </div>
+          <span class="badge badge-green">Official Records</span>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Payslip #</th>
+                <th>Employee Name</th>
+                <th>Executive Role</th>
+                <th>Pay Period</th>
+                <th>Base Salary (₹)</th>
+                <th>Extra Commission (₹)</th>
+                <th>Total Net Pay (₹)</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="payslipsTableBody">
+              <!-- Populated dynamically via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+        </div>
+        <!-- End of ideEnterpriseView -->
+
+        <!-- Bottom Dock (Terminal, Output, Problems, Shift) -->
+        <div class="ide-bottom-dock" id="ideBottomDock">
+          <div class="bottom-dock-tabs">
+            <div class="dock-tab-group">
+              <button class="dock-tab active" id="dockBtnTerminal" onclick="switchDockTab('terminal')">
+                <i class="ph ph-terminal-window"></i> Terminal
+              </button>
+              <button class="dock-tab" id="dockBtnOutput" onclick="switchDockTab('output')">
+                <i class="ph ph-clipboard-text"></i> Output
+              </button>
+              <button class="dock-tab" id="dockBtnProblems" onclick="switchDockTab('problems')">
+                <i class="ph ph-warning-circle"></i> Diagnostics
+              </button>
+              <button class="dock-tab" id="dockBtnShift" onclick="switchDockTab('shift')">
+                <i class="ph ph-timer"></i> Active Shift
+              </button>
+            </div>
+            <div class="dock-actions">
+              <button class="icon-btn-sm" onclick="clearTerminalHistory()" title="Clear Console"><i class="ph ph-trash"></i></button>
+              <button class="icon-btn-sm" onclick="toggleBottomDock()" title="Minimize/Restore Dock"><i class="ph ph-arrows-down-up"></i></button>
+            </div>
+          </div>
+
+          <!-- Terminal Panel -->
+          <div class="dock-panel active" id="dockPanelTerminal">
+            <div class="terminal-quick-pills">
+              <span class="pill-cmd" onclick="runQuickCmd('dir')">dir</span>
+              <span class="pill-cmd" onclick="runQuickCmd('node app.js')">node app.js</span>
+              <span class="pill-cmd" onclick="runQuickCmd('npm test')">npm test</span>
+              <span class="pill-cmd" onclick="runQuickCmd('git status')">git status</span>
+              <span class="pill-cmd" onclick="runQuickCmd('cls')">cls</span>
+            </div>
+            <div class="terminal-history" id="terminalHistory">TIA IDE Studio Terminal [Version 2.0.0]
+Workspace: E:\TIA portal\workspace
+Local shell ready (PowerShell / Windows CMD).
+</div>
+            <div class="terminal-prompt-row">
+              <span class="terminal-prompt-label">PS E:\workspace&gt;</span>
+              <input type="text" class="terminal-input" id="terminalInput" placeholder="Enter shell command (e.g. dir, node app.js)...">
+            </div>
+          </div>
+
+          <!-- Output Panel -->
+          <div class="dock-panel" id="dockPanelOutput">
+            <div class="terminal-history" id="outputConsole">[Ready] Runner Output Log. Click 'Run ▶️' (F5) to execute active code.</div>
+          </div>
+
+          <!-- Problems Panel -->
+          <div class="dock-panel" id="dockPanelProblems">
+            <div id="diagnosticsList">
+              <div style="color:var(--green-light); padding:8px 0;"><i class="ph ph-check-circle"></i> No syntax errors detected. Workspace is clean.</div>
+            </div>
+          </div>
+
+          <!-- Shift Panel -->
+          <div class="dock-panel" id="dockPanelShift">
+            <div style="padding:6px 0; color:var(--grey-light);">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <strong>Current Shift Session:</strong> <span id="dockShiftStatus">Checked Out</span>
+                </div>
+                <button class="btn-tool" onclick="toggleClockAction()"><i class="ph ph-fingerprint"></i> Clock In / Out</button>
+              </div>
+              <div style="margin-top:6px; font-size:0.8rem; color:var(--grey-medium);">
+                Logged in as: <span id="dockRoleName">Awaiting Login</span> | Office: <span id="dockLocation">Tirupati Intellect Authority Online</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- End of ide-editor-dock -->
+    </div>
+    <!-- End of ide-workbench -->
+
+    <!-- 4. BOTTOM STATUS BAR -->
+    <div class="ide-statusbar">
+      <div class="statusbar-left">
+        <div class="status-pill-item" onclick="openLoginModal()" title="Executive Role">
+          <span class="online-indicator offline" id="statusPresenceDot" style="width:7px; height:7px;"></span>
+          <span id="statusRoleName">Role: Guest</span>
+        </div>
+        <div class="status-pill-item" onclick="toggleClockAction()" title="Shift Duration">
+          <i class="ph ph-timer"></i>
+          <span id="statusShiftTimer">Shift: 00:00:00</span>
+        </div>
+        <div class="status-pill-item">
+          <i class="ph ph-git-branch"></i> main
+        </div>
+        <div class="status-pill-item">
+          <i class="ph ph-folder"></i> workspace
+        </div>
+      </div>
+      <div class="statusbar-right">
+        <div class="status-pill-item" id="statusCursorCoords">
+          Ln 1, Col 1
+        </div>
+        <div class="status-pill-item">
+          UTF-8
+        </div>
+        <div class="status-pill-item" id="statusLanguage">
+          HTML
+        </div>
+        <div class="status-pill-item" onclick="resetZoom()" title="Editor Zoom: Click to Reset (Ctrl+0)" style="cursor:pointer;">
+          <i class="ph ph-magnifying-glass"></i> <span id="statusEditorZoom">100%</span>
+        </div>
+        <div class="status-pill-item" style="color:var(--blue-ice);">
+          🏛️ GSTIN: 37EYLPM8018M1ZN
+        </div>
+        <div class="status-pill-item" onclick="toggleBottomDock()" title="Toggle Terminal">
+          <i class="ph ph-terminal"></i> Terminal
+        </div>
+      </div>
+    </div>
+  </main>
+  <!-- End of ide-root -->
+
+  <!-- 0. DOWNLOAD & INSTALL APP MODAL -->
+  <div class="modal-overlay" id="modalDownloadApp">
+    <div class="modal-box" style="max-width: 620px; border: 2px solid var(--green-light); background: #0b1329;">
+      <div style="text-align: center; padding: 24px 28px 12px 28px; border-bottom: 1px solid var(--border-subtle);">
+        <div class="logo-frame" style="width: 76px; height: 76px; margin: 0 auto 12px auto;">
+          <img src="/assets/tia_logo_circle.png" alt="TIA Logo" width="76" height="76" loading="lazy">
+        </div>
+        <h2 style="font-size: 1.4rem; color: #ffffff;">Download & Install TIA Mobile App</h2>
+        <div class="brand-tagline" style="font-size: 0.82rem; margin-top: 4px; color: var(--green-light);">
+          Tirupati Intellect Authority • Cross-Platform Mobile & Desktop Suite
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding: 20px 24px;">
+        <!-- Download Options Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 18px;">
+          <!-- Card 1: 1-Click Mobile Install -->
+          <div class="card" style="margin: 0; padding: 16px; background: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.35); text-align: center;">
+            <i class="ph ph-device-mobile" style="font-size: 2.2rem; color: var(--green-light); margin-bottom: 8px; display: block;"></i>
+            <strong style="color: #ffffff; font-size: 0.95rem; display: block; margin-bottom: 4px;">Install on Phone</strong>
+            <p style="font-size: 0.75rem; color: var(--grey-medium); margin-bottom: 12px;">Direct 1-tap install for Android & iPhone. Runs full-screen with offline support.</p>
+            <button class="btn-send" onclick="triggerPwaInstall()" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #10b981, #059669); font-size: 0.8rem;">
+              <i class="ph ph-plus-circle"></i> Install to Phone
+            </button>
+          </div>
+
+          <!-- Card 2: Offline ZIP Package -->
+          <div class="card" style="margin: 0; padding: 16px; background: rgba(59, 130, 246, 0.08); border-color: rgba(59, 130, 246, 0.35); text-align: center;">
+            <i class="ph ph-file-zip" style="font-size: 2.2rem; color: var(--blue-light); margin-bottom: 8px; display: block;"></i>
+            <strong style="color: #ffffff; font-size: 0.95rem; display: block; margin-bottom: 4px;">Download App Package</strong>
+            <p style="font-size: 0.75rem; color: var(--grey-medium); margin-bottom: 12px;">Complete offline bundle with Mobile App, PWA shell, Desktop launcher & Capacitor config.</p>
+            <a href="/downloads/tia-enterprise-mobile-app.zip" download="tia-enterprise-mobile-app.zip" class="btn-send" style="width: 100%; justify-content: center; font-size: 0.8rem; text-decoration: none;">
+              <i class="ph ph-download-simple"></i> Download .ZIP (3.8MB)
+            </a>
+          </div>
+        </div>
+
+        <!-- QR Code / Mobile Scan Section -->
+        <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+          <div style="background: #ffffff; padding: 6px; border-radius: 8px; flex-shrink: 0; width: 88px; height: 88px; display: flex; align-items: center; justify-content: center;">
+            <img id="qrCodeImg" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://tia-tirupati-intellect-authority.onrender.com" alt="QR Code" width="88" height="88" loading="lazy" style="width: 100%; height: 100%; object-fit: contain;">
+          </div>
+          <div style="flex: 1;">
+            <strong style="color: #ffffff; font-size: 0.9rem; display: block; margin-bottom: 4px;">Scan with Your Mobile Camera</strong>
+            <p style="font-size: 0.76rem; color: var(--grey-medium); line-height: 1.4; margin-bottom: 6px;">
+              Point your phone camera at this QR code to open and install the app directly on your Android or iPhone.
+            </p>
+            <span style="font-family: monospace; font-size: 0.74rem; color: var(--blue-light); word-break: break-all;" id="qrTargetUrlDisplay">https://tia-tirupati-intellect-authority.onrender.com</span>
+          </div>
+        </div>
+
+        <!-- Quick Platform Guide -->
+        <div style="margin-top: 14px; font-size: 0.76rem; color: var(--grey-medium); border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 10px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div><strong style="color:#ffffff;">🤖 Android:</strong> Tap "Install App" or Chrome Menu ⋮ &gt; "Add to Home screen"</div>
+            <div><strong style="color:#ffffff;">🍎 iOS / iPhone:</strong> Safari Share button ⎋ &gt; "Add to Home Screen" ➕</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 12px 24px; border-top: 1px solid var(--border-subtle);">
+        <button class="btn-sm-action" onclick="closeModal('modalDownloadApp')">Close</button>
+        <a href="/downloads/tia-enterprise-mobile-app.zip" download="tia-enterprise-mobile-app.zip" class="btn-send" style="text-decoration:none;">
+          <i class="ph ph-download-simple"></i> Download App ZIP
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1. EXECUTIVE ROLE LOGIN MODAL (Supports Username/Email/Mobile + Password) -->
+  <div class="modal-overlay" id="modalRoleLogin">
+    <div class="modal-box" style="max-width: 560px; border: 2px solid var(--blue-vibrant); background: #0b1329;">
+      <div style="text-align: center; padding: 26px 28px 12px 28px; border-bottom: 1px solid var(--border-subtle);">
+        <div class="logo-frame" style="width: 84px; height: 84px; margin: 0 auto 14px auto;">
+          <img src="/assets/tia_logo_circle.png" alt="TIA Logo" width="84" height="84">
+        </div>
+        <h2 style="font-size: 1.45rem; color: #ffffff;">TIA Enterprise Portal</h2>
+        <div class="brand-tagline" style="font-size: 0.8rem; margin-top: 2px;">Tirupati Intellect Authority • Empowering Tirupati with AI</div>
+        <div style="font-size: 0.82rem; color: var(--blue-light); margin-top: 6px; font-weight: 700;">
+          Executive Authentication (Username / Email / Mobile + Password)
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding: 22px 28px;">
+        <!-- Quick Fill Role Buttons -->
+        <label style="color: var(--grey-light); font-weight: 700; font-size: 0.82rem; display: block; margin-bottom: 8px;">
+          Select Executive Role or Add Custom Staff:
+        </label>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 18px;">
+          <button type="button" class="btn-role-select active" onclick="quickFillRoleLogin('ceo', this)">
+            <span>👑</span> <strong>CEO</strong>
+          </button>
+          <button type="button" class="btn-role-select" onclick="quickFillRoleLogin('cmo', this)">
+            <span>📈</span> <strong>CMO</strong>
+          </button>
+          <button type="button" class="btn-role-select" onclick="quickFillRoleLogin('pm', this)">
+            <span>🛠️</span> <strong>Project Mgr</strong>
+          </button>
+          <button type="button" class="btn-role-select" onclick="quickFillRoleLogin('techmgr', this)">
+            <span>⚙️</span> <strong>Tech Mgr</strong>
+          </button>
+          <button type="button" class="btn-role-select" onclick="quickFillRoleLogin('pa', this)">
+            <span>📋</span> <strong>P.A</strong>
+          </button>
+          <button type="button" class="btn-role-select" onclick="quickFillRoleLogin('officemgr', this)">
+            <span>🏢</span> <strong>Office Mgr</strong>
+          </button>
+          <button type="button" class="btn-role-select" id="btnRoleCustom" onclick="activateCustomStaffRegistration(this)" style="grid-column: span 3; background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.5);">
+            <span>➕</span> <strong>Custom Staff (Self Add / Register with auto tia123)</strong>
+          </button>
+        </div>
+
+        <!-- Custom Staff Fields (visible when Custom is selected) -->
+        <div id="customStaffFieldsContainer" style="display: none; padding: 14px; background: rgba(59, 130, 246, 0.08); border: 1px dashed rgba(59, 130, 246, 0.4); border-radius: var(--radius-md); margin-bottom: 16px;">
+          <div style="font-size: 0.82rem; font-weight: 700; color: var(--blue-light); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+            <i class="ph ph-user-plus" style="font-size: 1.1rem;"></i> Add Staff / Employee (Self-Registration)
+          </div>
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label style="font-size: 0.78rem;">Staff Full Name *</label>
+            <input type="text" class="form-control" id="loginCustomName" placeholder="e.g. Ramesh Naidu">
+          </div>
+          <div class="form-group" style="margin-bottom: 10px;">
+            <label style="font-size: 0.78rem;">Role / Designation *</label>
+            <input type="text" class="form-control" id="loginCustomRole" placeholder="e.g. Software Engineer, AI Researcher, Mechatronics Dev">
+          </div>
+          <div class="form-group" style="margin-bottom: 4px;">
+            <label style="font-size: 0.78rem;">Department (Optional)</label>
+            <input type="text" class="form-control" id="loginCustomDept" placeholder="e.g. Software Engineering, Robotics Lab, Operations">
+          </div>
+        </div>
+
+        <div class="form-group" id="groupLoginIdentifier">
+          <label id="lblLoginIdentifier">Username / Mobile / Email *</label>
+          <input type="text" class="form-control" id="loginIdentifier" placeholder="e.g. Username, mobile, or email" value="ceo">
+        </div>
+
+        <div class="form-group">
+          <label>Password *</label>
+          <input type="password" class="form-control" id="loginPassword" placeholder="Enter password" value="tia123" required>
+          <div style="font-size: 0.76rem; color: var(--green-light); margin-top: 5px;" id="loginPasswordHint">
+            <i class="ph ph-check-circle"></i> Automatic password for all staff & roles: <strong>tia123</strong>
+          </div>
+        </div>
+
+        <div class="form-group" id="groupLoginDisplayName">
+          <label id="lblLoginDisplayName">Full Name / Display Name:</label>
+          <input type="text" class="form-control" id="loginDisplayName" placeholder="e.g. Office Manager, M. Bhargav Rayudu, or Staff Name">
+        </div>
+
+        <div id="loginErrorAlert" style="display: none; color: #f87171; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; padding: 10px 14px; border-radius: 8px; font-size: 0.82rem; margin-top: 10px;"></div>
+
+        <!-- Sample Credentials Cheat Sheet -->
+        <div style="margin-top: 16px; padding: 10px 14px; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); font-size: 0.74rem; color: var(--grey-medium);">
+          <div style="font-weight: 700; color: var(--blue-light); margin-bottom: 4px;"><i class="ph ph-info"></i> Sample Role Logins:</div>
+          <div>• <strong>CEO:</strong> <code>ceo</code> / <code>ceo@tia.com</code> / <code>9494123456</code> (B.Tech Mechatronics • CAD)</div>
+          <div>• <strong>CMO:</strong> <code>cmo</code> / <code>cmo@tia.com</code> / <code>9848054321</code> (MBA Marketing)</div>
+          <div>• <strong>Project Manager:</strong> <code>pm</code> / <code>pm@tia.com</code> / <code>9123456780</code> (B.Tech CSE • PMP)</div>
+          <div>• <strong>Technical Manager:</strong> <code>techmgr</code> / <code>tech@tia.com</code> / <code>9876543210</code> (M.Tech Robotics)</div>
+          <div>• <strong>P.A:</strong> <code>pa</code> / <code>pa@tia.com</code> / <code>9700087654</code> (M.Sc Corporate Mgmt)</div>
+          <div>• <strong>Office Manager:</strong> <code>officemgr</code> / <code>officemgr@tia.com</code> / <code>9494123457</code> (MBA Corporate Operations)</div>
+          <div style="margin-top: 3px;">• <strong>Universal Password:</strong> <code>tia123</code> (Auto-assigned to all staff)</div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 18px 28px; justify-content: stretch; gap: 12px;">
+        <button class="btn-sm-action" onclick="closeModal('modalRoleLogin')" style="flex: 1; justify-content: center;">Cancel</button>
+        <button class="btn-send" id="btnSubmitRoleLogin" style="flex: 2; justify-content: center; height: 44px;" onclick="submitRoleLogin()">
+          <i class="ph ph-sign-in"></i> Sign In to Portal
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. ATTENDANCE OPTIONS MODAL -->
+  <div class="modal-overlay" id="modalClockIn">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 style="font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
+          <i class="ph ph-fingerprint" style="color: var(--blue-light);"></i>
+          Attendance Management
+        </h3>
+        <button class="btn-sm-action" onclick="closeModal('modalClockIn')" style="border: none; background: transparent;">
+          <i class="ph ph-x" style="font-size: 1.25rem;"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom: 16px; padding: 14px; background: var(--bg-surface-elevated); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+          <div style="font-size: 0.78rem; color: var(--grey-medium);">Personnel:</div>
+          <div style="font-weight: 800; font-size: 1.05rem; color: #ffffff;" id="modalClockEmpName">CEO</div>
+          <div style="font-size: 0.82rem; color: var(--blue-light);" id="modalClockEmpRole">Executive Leadership</div>
+        </div>
+
+        <div class="form-group">
+          <label>Work Mode / Shift Location:</label>
+          <select class="form-control" id="clockWorkMode">
+            <option value="Executive Office">Executive Office (TIA HQ)</option>
+            <option value="Office - Tirupati Tech Park">Office - Tirupati Tech Park</option>
+            <option value="AI Innovation Lab">AI Innovation Lab</option>
+            <option value="Mechatronics Workshop">Mechatronics Prototyping Workshop</option>
+            <option value="Remote AI Lab">Remote AI Lab</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Location / Work Station:</label>
+          <input type="text" class="form-control" id="clockLocation" value="Tirupati Intellect Authority Online">
+        </div>
+
+        <div class="form-group">
+          <label>Shift Notes (Optional):</label>
+          <input type="text" class="form-control" id="clockNotes" placeholder="e.g. Executive sprint and student certification review">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-sm-action" onclick="closeModal('modalClockIn')">Cancel</button>
+        <button class="btn-clock-action btn-clock-out" id="btnPerformClockOut" onclick="performClockOut()" style="display: none;">
+          <i class="ph ph-sign-out"></i> Confirm Check Out
+        </button>
+        <button class="btn-clock-action btn-clock-in" id="btnPerformClockIn" onclick="performClockIn()">
+          <i class="ph ph-sign-in"></i> Confirm Check In
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. ENROLL STUDENT MODAL (ADMIN) -->
+  <div class="modal-overlay" id="modalAddStudent">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 style="font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
+          <i class="ph ph-student" style="color: var(--blue-light);"></i>
+          Enroll Student & Issue Bill Receipt
+        </h3>
+        <button class="btn-sm-action" onclick="closeModal('modalAddStudent')" style="border: none; background: transparent;">
+          <i class="ph ph-x" style="font-size: 1.25rem;"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Student Full Name *</label>
+          <input type="text" class="form-control" id="stuName" placeholder="e.g. K. Sai Praneeth" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label>Email Address</label>
+            <input type="email" class="form-control" id="stuEmail" placeholder="student@example.com">
+          </div>
+          <div class="form-group">
+            <label>Phone / WhatsApp *</label>
+            <input type="text" class="form-control" id="stuPhone" placeholder="+91 98480 12345">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Select Professional Course *</label>
+          <select class="form-control" id="stuCourseSelect" onchange="handleStudentCourseChange()"></select>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label>Course Start Date *</label>
+            <input type="date" class="form-control" id="stuStartDate">
+          </div>
+          <div class="form-group">
+            <label>Course End Date *</label>
+            <input type="date" class="form-control" id="stuEndDate">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label>Total Fees (₹) *</label>
+            <input type="number" class="form-control" id="stuTotalFees" value="18500" oninput="calculateBalance()">
+          </div>
+          <div class="form-group">
+            <label>Paid Amount (₹) *</label>
+            <input type="number" class="form-control" id="stuPaidFees" value="18500" oninput="calculateBalance()">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label>Pending Balance Due (₹)</label>
+            <input type="number" class="form-control" id="stuBalanceFees" value="0" readonly style="background: rgba(0,0,0,0.4); color: var(--blue-light);">
+          </div>
+          <div class="form-group">
+            <label>Payment Method</label>
+            <select class="form-control" id="stuPaymentMethod">
+              <option value="UPI / GPay">UPI / GPay</option>
+              <option value="Net Banking">Net Banking</option>
+              <option value="Credit / Debit Card">Credit / Debit Card</option>
+              <option value="Cash / Office Counter">Cash / Office Counter</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Academic Notes (Optional):</label>
+          <input type="text" class="form-control" id="stuNotes" placeholder="e.g. Specializing in robotic arm vision">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-sm-action" onclick="closeModal('modalAddStudent')">Cancel</button>
+        <button class="btn-send" onclick="saveNewStudent()">
+          <i class="ph ph-check"></i> Save & Generate Bill Receipt
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. GENERATE EMPLOYEES PAYSLIP MODAL (Name, Salary, Extra Commission) -->
+  <div class="modal-overlay" id="modalAddPayslip">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 style="font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
+          <i class="ph ph-money" style="color: var(--green-light);"></i>
+          Generate Employee Payslip
+        </h3>
+        <button class="btn-sm-action" onclick="closeModal('modalAddPayslip')" style="border: none; background: transparent;">
+          <i class="ph ph-x" style="font-size: 1.25rem;"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Employee Name *</label>
+          <input type="text" class="form-control" id="payslipName" placeholder="e.g. M. Bhargav Rayudu" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label>Role / Position</label>
+            <select class="form-control" id="payslipRole">
+              <option value="CEO">CEO</option>
+              <option value="CMO">CMO</option>
+              <option value="Project Manager">Project Manager</option>
+              <option value="Technical Manager">Technical Manager</option>
+              <option value="P.A">P.A (Personal Assistant)</option>
+              <option value="AI Engineer">AI Engineer</option>
+              <option value="CAD Specialist">CAD Specialist</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Pay Period (Month & Year) *</label>
+            <input type="text" class="form-control" id="payslipMonth" value="October 2026">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label>Base Salary (₹) *</label>
+            <input type="number" class="form-control" id="payslipSalary" placeholder="e.g. 50000" oninput="calculatePayslipTotal()" required>
+          </div>
+          <div class="form-group">
+            <label>Extra Commission (₹) *</label>
+            <input type="number" class="form-control" id="payslipCommission" placeholder="e.g. 15000" value="0" oninput="calculatePayslipTotal()" required>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label>Total Net Pay (₹) [Salary + Commission]</label>
+            <input type="number" class="form-control" id="payslipTotalDisplay" readonly style="background: rgba(0,0,0,0.4); color: var(--green-light); font-weight: 800; font-size: 1.1rem;">
+          </div>
+          <div class="form-group">
+            <label>Disbursement Method</label>
+            <select class="form-control" id="payslipPaymentMethod">
+              <option value="Direct Bank Transfer (NEFT/IMPS)">Direct Bank Transfer (NEFT/IMPS)</option>
+              <option value="UPI / Online">UPI / Online</option>
+              <option value="Cheque">Cheque</option>
+              <option value="Cash">Cash</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Remarks / Performance Notes (Optional):</label>
+          <input type="text" class="form-control" id="payslipNotes" placeholder="e.g. Target achievement incentive for Q3 mechatronics projects">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-sm-action" onclick="closeModal('modalAddPayslip')">Cancel</button>
+        <button class="btn-send" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-color: rgba(16, 185, 129, 0.4);" onclick="saveNewPayslip()">
+          <i class="ph ph-check"></i> Generate & Issue Payslip
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. OFFICIAL PRINTABLE INVOICE / BILL-RECEIPT MODAL -->
+  <div class="modal-overlay" id="modalInvoice">
+    <div class="modal-box" style="max-width: 840px; background: transparent; border: none; box-shadow: none;">
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 12px;" class="no-print">
+        <button class="btn-send" onclick="window.print()">
+          <i class="ph ph-printer"></i> Print / Download PDF
+        </button>
+        <button class="btn-sm-action" onclick="closeModal('modalInvoice')" style="background: rgba(0,0,0,0.7);">
+          <i class="ph ph-x"></i> Close
+        </button>
+      </div>
+      <div class="invoice-print-container" id="printableInvoiceContent"></div>
+    </div>
+  </div>
+
+  <!-- 6. OFFICIAL PRINTABLE PAYSLIP MODAL -->
+  <div class="modal-overlay" id="modalPayslipPrint">
+    <div class="modal-box" style="max-width: 840px; background: transparent; border: none; box-shadow: none;">
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 12px;" class="no-print">
+        <button class="btn-send" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);" onclick="window.print()">
+          <i class="ph ph-printer"></i> Print Payslip / Download PDF
+        </button>
+        <button class="btn-sm-action" onclick="closeModal('modalPayslipPrint')" style="background: rgba(0,0,0,0.7);">
+          <i class="ph ph-x"></i> Close
+        </button>
+      </div>
+      <div class="payslip-print-container" id="printablePayslipContent"></div>
+    </div>
+  </div>
+
+  <!-- 7. OFFICIAL PRINTABLE CERTIFICATE MODAL -->
+  <div class="modal-overlay" id="modalCertificate">
+    <div class="modal-box" style="max-width: 880px; background: transparent; border: none; box-shadow: none;">
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 12px;" class="no-print">
+        <button class="btn-send" onclick="window.print()">
+          <i class="ph ph-printer"></i> Print Certificate
+        </button>
+        <button class="btn-sm-action" onclick="closeModal('modalCertificate')" style="background: rgba(0,0,0,0.7);">
+          <i class="ph ph-x"></i> Close
+        </button>
+      </div>
+      <div class="invoice-print-container" id="printableCertificateContent" style="border: 6px double #2563eb; background: #fffcf2; text-align: center; padding: 50px;"></div>
+    </div>
+  </div>
+
+  <!-- 8. ADD COURSE MODAL -->
+  <div class="modal-overlay" id="modalAddCourse">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 style="font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
+          <i class="ph ph-book-open" style="color: var(--blue-light);"></i>
+          Create Short-Term Professional Course
+        </h3>
+        <button class="btn-sm-action" onclick="closeModal('modalAddCourse')" style="border: none; background: transparent;">
+          <i class="ph ph-x" style="font-size: 1.25rem;"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Course Title *</label>
+          <input type="text" class="form-control" id="crsTitle" placeholder="e.g. Edge AI & Computer Vision for Robotics">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label>Category *</label>
+            <input type="text" class="form-control" id="crsCategory" placeholder="e.g. AI & Mechatronics">
+          </div>
+          <div class="form-group">
+            <label>Duration *</label>
+            <input type="text" class="form-control" id="crsDuration" placeholder="e.g. 6 Weeks">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label>Fees (₹) *</label>
+            <input type="number" class="form-control" id="crsFees" placeholder="18500">
+          </div>
+          <div class="form-group">
+            <label>Instructor</label>
+            <input type="text" class="form-control" id="crsInstructor" placeholder="M. Bhargav Rayudu (CEO)">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Curriculum Description:</label>
+          <textarea class="form-control" id="crsDescription" rows="3" placeholder="Syllabus, projects, and certifications..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-sm-action" onclick="closeModal('modalAddCourse')">Cancel</button>
+        <button class="btn-send" onclick="saveNewCourse()">
+          <i class="ph ph-check"></i> Publish Course
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. EDIT & MANAGE STAFF CREDENTIALS MODAL (CEO / Office Manager / P.A Only) -->
+  <div class="modal-overlay" id="modalEditEmployee">
+    <div class="modal-box" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1.15rem; display: flex; align-items: center; gap: 8px;">
+          <i class="ph ph-user-gear" style="color: var(--blue-light);"></i>
+          <span>Edit Staff & Credentials</span>
+        </h3>
+        <button class="btn-sm-action" onclick="closeModal('modalEditEmployee')" style="border: none; background: transparent;">
+          <i class="ph ph-x" style="font-size: 1.25rem;"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <input type="hidden" id="editEmpId">
+
+        <div style="padding: 10px 14px; background: rgba(37, 99, 235, 0.12); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: var(--radius-sm); margin-bottom: 14px; font-size: 0.8rem; color: var(--blue-light);">
+          <i class="ph ph-shield-check"></i> Executive Authority: <strong>CEO • Office Manager • P.A</strong>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label>Full Name *</label>
+            <input type="text" class="form-control" id="editEmpName" placeholder="e.g. Kavitha R.">
+          </div>
+          <div class="form-group">
+            <label>Role / Designation *</label>
+            <input type="text" class="form-control" id="editEmpRole" placeholder="e.g. Robotics Engineer">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label>Department *</label>
+            <input type="text" class="form-control" id="editEmpDept" placeholder="e.g. Mechatronics Lab">
+          </div>
+          <div class="form-group">
+            <label>Qualifications / Credentials</label>
+            <input type="text" class="form-control" id="editEmpCredentials" placeholder="e.g. B.Tech Robotics, MBA">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label>Mobile Number</label>
+            <input type="text" class="form-control" id="editEmpMobile" placeholder="e.g. +91 9494123456">
+          </div>
+          <div class="form-group">
+            <label>WhatsApp Number</label>
+            <input type="text" class="form-control" id="editEmpWhatsapp" placeholder="e.g. 919494123456">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label>Login Password</label>
+            <input type="text" class="form-control" id="editEmpPassword" placeholder="e.g. tia123">
+          </div>
+          <div class="form-group">
+            <label>Work Mode</label>
+            <select class="form-control" id="editEmpWorkMode">
+              <option value="Executive Office">Executive Office</option>
+              <option value="Office - Tirupati Tech Park">Office - Tirupati Tech Park</option>
+              <option value="Technology Lab">Technology Lab</option>
+              <option value="Field & Client Operations">Field & Client Operations</option>
+              <option value="Remote / Online">Remote / Online</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="editEmpAlert" style="display: none; padding: 10px 14px; border-radius: 8px; font-size: 0.82rem; margin-top: 10px;"></div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; gap: 10px;">
+        <button type="button" class="btn-sm-action" id="btnModalDeleteEmp" onclick="confirmDeleteCurrentEmployee()" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4); display: none;">
+          <i class="ph ph-trash"></i> Delete Staff Account
+        </button>
+        <div style="display: flex; gap: 10px; margin-left: auto;">
+          <button type="button" class="btn-sm-action" onclick="closeModal('modalEditEmployee')">Cancel</button>
+          <button type="button" class="btn-send" onclick="saveEmployeeChanges()">
+            <i class="ph ph-check"></i> Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- ==================== PWA MOBILE INSTALL BANNER ==================== -->
+  <div id="pwaInstallBanner" class="pwa-install-banner download-app-btn" style="display: none;">
+    <div class="pwa-banner-content">
+      <img src="/assets/tia_logo_circle.png" alt="TIA Logo" class="pwa-banner-icon" width="44" height="44" loading="lazy">
+      <div class="pwa-banner-text">
+        <div class="pwa-banner-title">TIA Enterprise Mobile</div>
+        <div class="pwa-banner-desc">Install app on your phone for full-screen mode & quick access</div>
+      </div>
+      <div class="pwa-banner-actions">
+        <button class="btn-pwa-install" onclick="triggerPwaInstall()">
+          <i class="ph ph-download-simple"></i> Install
+        </button>
+        <button class="btn-pwa-close" onclick="dismissPwaBanner()" title="Close banner">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MOBILE APP BOTTOM NAVIGATION BAR ==================== -->
+  <nav class="mobile-bottom-nav" id="mobileBottomNav">
+    <button class="mobile-nav-btn active" id="mobNavDashboard" onclick="switchMobileTab('dashboard')">
+      <i class="ph ph-squares-four"></i>
+      <span>Home</span>
+    </button>
+    <button class="mobile-nav-btn" id="mobNavMessages" onclick="switchMobileTab('communications')">
+      <i class="ph ph-chats-circle"></i>
+      <span>Messages</span>
+    </button>
+    <button class="mobile-nav-btn" id="mobNavForge" onclick="switchMobileTab('ide')">
+      <i class="ph ph-code-block"></i>
+      <span>IDE & Code</span>
+    </button>
+    <button class="mobile-nav-btn" id="mobNavCourses" onclick="switchMobileTab('courses')">
+      <i class="ph ph-graduation-cap"></i>
+      <span>Courses</span>
+    </button>
+    <button class="mobile-nav-btn" id="mobNavPayslips" onclick="switchMobileTab('payslips')">
+      <i class="ph ph-receipt"></i>
+      <span>Payslips</span>
+    </button>
+  </nav>
+
+  <!-- Application Logic (Minified & Deferred) -->
+  <script src="/js/app.min.js?v=3.6" defer></script>
+</body>
+</html>

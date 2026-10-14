@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TIA Autonomous Mechatronics Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <span class="badge">TIA IDE</span>
+        <h2>Tirupati Intellect Authority</h2>
+      </div>
+      <p class="subtitle">Empowering Tirupati with AI & Mechatronics • CEO M. Bhargav Rayudu</p>
+    </header>
+
+    <main class="grid">
+      <div class="card">
+        <h3>🤖 Robotic Arm Telemetry</h3>
+        <div class="metric">
+          <span class="label">Servo Angle X:</span>
+          <span class="value" id="servoX">92.4°</span>
+        </div>
+        <div class="metric">
+          <span class="label">Motor RPM:</span>
+          <span class="value" id="motorRPM">2,450 RPM</span>
+        </div>
+        <div class="metric">
+          <span class="label">Torque:</span>
+          <span class="value text-green">14.8 Nm (Optimal)</span>
+        </div>
+        <button id="btnActuate" class="btn">Calibrate Actuator</button>
+      </div>
+
+      <div class="card">
+        <h3>🧠 AI Vision Inspection</h3>
+        <div class="status-pill status-active">🟢 Model Active: YOLOV8-Mechatronics</div>
+        <p class="description">Live detection of defect anomalies in manufactured spur gears.</p>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: 98.4%;"></div>
+        </div>
+        <div class="metric-sm">Accuracy: 98.4% | Latency: 12ms</div>
+      </div>
+    </main>
+
+    <footer>
+      <span>GSTIN: 37EYLPM8018M1ZN</span>
+      <span>TIA Enterprise Studio v2.0</span>
+    </footer>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

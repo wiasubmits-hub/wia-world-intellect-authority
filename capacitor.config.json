@@ -1,0 +1,17 @@
+{
+  "appId": "com.tia.enterprise",
+  "appName": "TIA Enterprise Portal",
+  "webDir": "public",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#050811",
+      "showSpinner": false
+    }
+  }
+}
