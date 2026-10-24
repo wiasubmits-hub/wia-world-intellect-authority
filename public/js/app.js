@@ -77,13 +77,14 @@ document.addEventListener('DOMContentLoaded', () => {
   restoreSession();
   initIdeStudio();
 
+  // Load employees & attendance in parallel on startup for zero-flicker checkin status
   scheduleTask(async () => {
     try {
-      await loadEmployees();
+      await Promise.all([loadEmployees(), loadAttendance()]);
       renderChatStaffList();
       restoreSession();
     } catch (e) {
-      console.warn('Initial staff sync notice:', e);
+      console.warn('Initial staff & attendance sync notice:', e);
     }
   });
 
@@ -204,6 +205,7 @@ function quickFillRoleLogin(roleKey, btnEl) {
 
   const roleCreds = {
     ceo: { ident: 'ceo', pwd: 'tia123', name: 'M. Bhargav Rayudu' },
+    oc: { ident: 'oc', pwd: 'tia123', name: 'OC (Operations Chief)' },
     cmo: { ident: 'cmo', pwd: 'tia123', name: 'Chief Marketing Officer' },
     pm: { ident: 'pm', pwd: 'tia123', name: 'Project Manager' },
     techmgr: { ident: 'techmgr', pwd: 'tia123', name: 'Technical Manager' },
@@ -279,10 +281,18 @@ async function submitRoleLogin() {
     const result = await res.json();
 
     if (result.success) {
+      stopShiftTimer();
+      const prevActiveEmpId = localStorage.getItem('tia_device_active_emp_id');
+      if (prevActiveEmpId !== result.user.id) {
+        localStorage.removeItem('tia_device_clocked_in');
+        localStorage.removeItem('tia_device_active_att_id');
+      }
+      localStorage.setItem('tia_device_active_emp_id', result.user.id);
       state.currentUser = result.user;
       localStorage.setItem('tia_session', JSON.stringify(result.user));
       closeModal('modalRoleLogin');
-      await loadEmployees();
+      await Promise.all([loadEmployees(), loadAttendance()]);
+      restoreSession();
       renderChatStaffList();
       updateAuthUI();
       if (result.newlyRegistered) {
@@ -325,22 +335,101 @@ async function performLogout() {
   showNotification('Signed out from portal session.');
 }
 
+// Device ID manager
+function getDeviceId() {
+  try {
+    let devId = localStorage.getItem('tia_device_id');
+    if (!devId) {
+      devId = 'dev_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now();
+      localStorage.setItem('tia_device_id', devId);
+    }
+    return devId;
+  } catch (e) {
+    return 'dev_browser';
+  }
+}
+
+// Finds any active (unclosed) attendance session strictly for this employee by email or employee ID today
+function getActiveAttendanceSession(empId, empRole, empEmail) {
+  if (!Array.isArray(state.attendance) || state.attendance.length === 0) return null;
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const cleanEmail = (empEmail || (state.currentUser && state.currentUser.email) || '').toLowerCase().trim();
+
+  return state.attendance.find(a => {
+    const isToday = a.date === todayStr || !a.date;
+    const isOpen = a.clockOut === '--' || (a.status && a.status.includes('Active'));
+    if (!isToday || !isOpen) return false;
+
+    // 1. Strict email match (email-to-email isolation)
+    if (cleanEmail && a.employeeEmail) {
+      return a.employeeEmail.toLowerCase() === cleanEmail;
+    }
+    // 2. Strict employee ID match
+    if (empId && a.employeeId) {
+      return a.employeeId === empId;
+    }
+    // 3. Role fallback only if no email or id
+    if (!cleanEmail && !empId && empRole && a.role) {
+      return a.role.toLowerCase() === empRole.toLowerCase();
+    }
+    return false;
+  }) || null;
+}
+
 function restoreSession() {
   const sessionStr = localStorage.getItem('tia_session');
   if (sessionStr) {
     try {
       const user = JSON.parse(sessionStr);
-      const match = state.employees.find(e => e.id === user.id);
-      state.currentUser = match || user;
+      const userEmail = (user.email || '').toLowerCase().trim();
+      const match = state.employees.find(e => 
+        (userEmail && e.email && e.email.toLowerCase() === userEmail) || 
+        e.id === user.id
+      );
+
+      const hasAttendanceLoaded = Array.isArray(state.attendance) && state.attendance.length > 0;
+      let isClockedIn = false;
+      let clockInTime = null;
+
+      if (hasAttendanceLoaded) {
+        // Attendance records are loaded from server: check authoritative session
+        const activeAtt = getActiveAttendanceSession(user.id, user.role, user.email);
+        if (activeAtt) {
+          isClockedIn = true;
+          clockInTime = activeAtt.clockInTime || user.clockInTime || new Date().toISOString();
+        } else {
+          isClockedIn = false;
+          clockInTime = null;
+        }
+      } else {
+        // Attendance not loaded yet (e.g. on page refresh): preserve existing checked-in status from session!
+        if (user.clockedIn) {
+          isClockedIn = true;
+          clockInTime = user.clockInTime || new Date().toISOString();
+        }
+      }
+
+      state.currentUser = match 
+        ? { ...match, ...user, clockedIn: isClockedIn, clockInTime } 
+        : { ...user, clockedIn: isClockedIn, clockInTime };
+
+      localStorage.setItem('tia_session', JSON.stringify(state.currentUser));
       updateAuthUI();
       renderEmployeeGrid();
       renderChatStaffList();
+
       if (state.currentUser.clockedIn && state.currentUser.clockInTime) {
         startLiveShiftTimer(new Date(state.currentUser.clockInTime));
+      } else {
+        stopShiftTimer();
       }
     } catch (e) {
       console.warn('Session parse error:', e);
     }
+  } else {
+    state.currentUser = null;
+    stopShiftTimer();
+    updateAuthUI();
   }
 }
 
@@ -433,6 +522,8 @@ async function performClockIn() {
   const workMode = document.getElementById('clockWorkMode')?.value || state.currentUser.workMode || 'Executive Office';
   const location = document.getElementById('clockLocation')?.value || 'Tirupati Intellect Authority Online';
   const notes = document.getElementById('clockNotes')?.value || 'Online portal active';
+  const deviceId = getDeviceId();
+  const userEmail = (state.currentUser.email || '').toLowerCase().trim();
 
   try {
     const res = await fetch('/api/attendance/clock-in', {
@@ -440,6 +531,8 @@ async function performClockIn() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         employeeId: state.currentUser.id,
+        email: userEmail,
+        deviceId,
         workMode,
         location,
         notes
@@ -449,11 +542,10 @@ async function performClockIn() {
     if (result.success) {
       closeModal('modalClockIn');
       state.currentUser.clockedIn = true;
-      state.currentUser.clockInTime = result.employee.clockInTime || new Date().toISOString();
+      state.currentUser.clockInTime = result.employee?.clockInTime || result.attendance?.clockInTime || new Date().toISOString();
       localStorage.setItem('tia_session', JSON.stringify(state.currentUser));
 
-      await loadEmployees();
-      await loadAttendance();
+      await Promise.all([loadEmployees(), loadAttendance()]);
       updateAuthUI();
       startLiveShiftTimer(new Date(state.currentUser.clockInTime));
       showNotification('🟢 Checked In successfully! Shift timer started.');
@@ -469,6 +561,8 @@ async function performClockIn() {
 async function performClockOut() {
   if (!state.currentUser) return;
   const notes = document.getElementById('clockNotes')?.value || 'Shift completed';
+  const deviceId = getDeviceId();
+  const userEmail = (state.currentUser.email || '').toLowerCase().trim();
 
   try {
     const res = await fetch('/api/attendance/clock-out', {
@@ -476,6 +570,8 @@ async function performClockOut() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         employeeId: state.currentUser.id,
+        email: userEmail,
+        deviceId,
         notes
       })
     });
@@ -487,8 +583,7 @@ async function performClockOut() {
       state.currentUser.clockInTime = null;
       localStorage.setItem('tia_session', JSON.stringify(state.currentUser));
 
-      await loadEmployees();
-      await loadAttendance();
+      await Promise.all([loadEmployees(), loadAttendance()]);
       updateAuthUI();
       showNotification(`🔴 Checked Out! Duration: ${result.record ? result.record.duration : 'Completed'}`);
     } else {
@@ -504,6 +599,30 @@ function startLiveShiftTimer(startTime) {
   stopShiftTimer();
   function tick() {
     const now = new Date();
+
+    // Auto-checkout check at 10:00 PM IST
+    const istParts = new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: 'numeric',
+      hour12: false
+    }).formatToParts(now);
+    const hour = parseInt(istParts.find(p => p.type === 'hour')?.value || '0', 10);
+    if (hour >= 22) {
+      stopShiftTimer();
+      localStorage.removeItem('tia_device_clocked_in');
+      localStorage.removeItem('tia_device_active_att_id');
+      if (state.currentUser) {
+        state.currentUser.clockedIn = false;
+        state.currentUser.clockInTime = null;
+        localStorage.setItem('tia_session', JSON.stringify(state.currentUser));
+        updateAuthUI();
+      }
+      showNotification('🌙 10:00 PM IST: Automated Shift Checkout executed.');
+      loadAttendance();
+      loadEmployees();
+      return;
+    }
+
     const diffMs = Math.max(0, now - startTime);
     const hrs = Math.floor(diffMs / (1000 * 60 * 60));
     const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
@@ -546,41 +665,36 @@ function stopShiftTimer() {
 
 function updateHeaderClockButton() {
   const btn = document.getElementById('btnHeaderClock');
-  const label = document.getElementById('clockBtnLabel');
   const dashBtn = document.getElementById('btnDashboardCheckIn');
-  const dashLabel = document.getElementById('dashboardClockBtnLabel');
   const ideBtn = document.getElementById('ideBtnClock');
-  const ideLabel = document.getElementById('ideClockBtnLabel');
 
-  if (state.currentUser && state.currentUser.clockedIn) {
+  const isClocked = !!(state.currentUser && state.currentUser.clockedIn);
+
+  if (isClocked) {
     if (btn) {
       btn.className = 'btn-clock-action btn-clock-out';
-      if (label) label.textContent = 'Check Out';
-      btn.innerHTML = `<i class="ph ph-sign-out"></i> <span>Check Out</span>`;
+      btn.innerHTML = '<i class="ph ph-sign-out"></i> <span id="clockBtnLabel">Check Out</span>';
     }
     if (dashBtn) {
       dashBtn.className = 'btn-clock-action btn-clock-out';
-      if (dashLabel) dashLabel.textContent = 'Check Out Now';
+      dashBtn.innerHTML = '<i class="ph ph-sign-out"></i> <span id="dashboardClockBtnLabel">Check Out Now</span>';
     }
     if (ideBtn) {
       ideBtn.className = 'btn-clock-action btn-clock-out';
-      if (ideLabel) ideLabel.textContent = 'Check Out';
-      ideBtn.innerHTML = `<i class="ph ph-sign-out"></i> <span>Check Out</span>`;
+      ideBtn.innerHTML = '<i class="ph ph-sign-out"></i> <span id="ideClockBtnLabel">Check Out</span>';
     }
   } else {
     if (btn) {
       btn.className = 'btn-clock-action btn-clock-in';
-      if (label) label.textContent = 'Check In';
-      btn.innerHTML = `<i class="ph ph-fingerprint"></i> <span>Check In</span>`;
+      btn.innerHTML = '<i class="ph ph-fingerprint"></i> <span id="clockBtnLabel">Check In</span>';
     }
     if (dashBtn) {
       dashBtn.className = 'btn-clock-action btn-clock-in';
-      if (dashLabel) dashLabel.textContent = '1-Click Check In';
+      dashBtn.innerHTML = '<i class="ph ph-fingerprint"></i> <span id="dashboardClockBtnLabel">1-Click Check In</span>';
     }
     if (ideBtn) {
       ideBtn.className = 'btn-clock-action btn-clock-in';
-      if (ideLabel) ideLabel.textContent = 'Check In';
-      ideBtn.innerHTML = `<i class="ph ph-fingerprint"></i> <span>Check In</span>`;
+      ideBtn.innerHTML = '<i class="ph ph-fingerprint"></i> <span id="ideClockBtnLabel">Check In</span>';
     }
   }
 }
@@ -669,30 +783,76 @@ async function loadAttendance() {
       cache: 'no-store',
       headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
     });
-    let list = await res.json();
-    if (Array.isArray(list)) {
-      let localSaved = [];
-      try {
-        localSaved = JSON.parse(localStorage.getItem('tia_attendance_records') || '[]');
-      } catch (e) {}
+    let serverList = await res.json();
+    let localSaved = [];
+    try {
+      localSaved = JSON.parse(localStorage.getItem('tia_attendance_records') || '[]');
+    } catch (e) {}
 
-      if (list.length > 0) {
-        state.attendance = list;
-        try { localStorage.setItem('tia_attendance_records', JSON.stringify(list)); } catch (e) {}
-      } else if (localSaved.length > 0) {
-        // If server was restarted with empty disk, restore from client backup and sync
-        state.attendance = localSaved;
-        try {
-          fetch('/api/attendance/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ records: localSaved })
-          }).catch(() => {});
-        } catch (e) {}
+    // Bidirectional merge by record ID to ensure NO attendance records are ever missing or lost
+    const recordsMap = new Map();
+
+    if (Array.isArray(serverList)) {
+      serverList.forEach(r => { if (r && r.id) recordsMap.set(r.id, r); });
+    }
+
+    const unsyncedFromLocal = [];
+    if (Array.isArray(localSaved)) {
+      localSaved.forEach(r => {
+        if (r && r.id) {
+          if (!recordsMap.has(r.id)) {
+            recordsMap.set(r.id, r);
+            unsyncedFromLocal.push(r);
+          }
+        }
+      });
+    }
+
+    const merged = Array.from(recordsMap.values());
+    merged.sort((a, b) => {
+      const dateCmp = (b.date || '').localeCompare(a.date || '');
+      if (dateCmp !== 0) return dateCmp;
+      const tB = b.clockInTime ? new Date(b.clockInTime).getTime() : (parseInt((b.id || '').replace(/\D/g, ''), 10) || 0);
+      const tA = a.clockInTime ? new Date(a.clockInTime).getTime() : (parseInt((a.id || '').replace(/\D/g, ''), 10) || 0);
+      return tB - tA;
+    });
+    state.attendance = merged;
+
+    try {
+      localStorage.setItem('tia_attendance_records', JSON.stringify(merged));
+    } catch (e) {}
+
+    // If local storage has attendance records that the server missed, automatically sync to server
+    if (unsyncedFromLocal.length > 0) {
+      try {
+        fetch('/api/attendance/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ records: unsyncedFromLocal })
+        }).catch(() => {});
+      } catch (e) {}
+    }
+
+    // Reconcile currentUser active checkin status with loaded attendance
+    if (state.currentUser) {
+      const activeRecord = getActiveAttendanceSession(state.currentUser.id, state.currentUser.role, state.currentUser.email);
+
+      if (activeRecord) {
+        state.currentUser.clockedIn = true;
+        state.currentUser.clockInTime = activeRecord.clockInTime || state.currentUser.clockInTime || new Date().toISOString();
+        localStorage.setItem('tia_session', JSON.stringify(state.currentUser));
+        updateAuthUI();
+        startLiveShiftTimer(new Date(state.currentUser.clockInTime));
       } else {
-        state.attendance = [];
+        // No open attendance record found for this employee's email on server today
+        state.currentUser.clockedIn = false;
+        state.currentUser.clockInTime = null;
+        localStorage.setItem('tia_session', JSON.stringify(state.currentUser));
+        stopShiftTimer();
+        updateAuthUI();
       }
     }
+
     renderAttendanceTable();
   } catch (err) {
     console.warn('Failed to load attendance:', err);
@@ -1120,8 +1280,35 @@ function generateAndShowPayslip(id) {
 // ===================================================================
 async function loadEmployees() {
   try {
-    const res = await fetch('/api/employees');
+    const res = await fetch(`/api/employees?_t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+    });
     state.employees = await res.json();
+
+    // Synchronize currentUser from matching employee
+    if (state.currentUser) {
+      const userEmail = (state.currentUser.email || '').toLowerCase().trim();
+      const match = state.employees.find(e => 
+        (userEmail && e.email && e.email.toLowerCase() === userEmail) || 
+        e.id === state.currentUser.id
+      );
+      if (match) {
+        const activeRecord = getActiveAttendanceSession(state.currentUser.id, state.currentUser.role, state.currentUser.email);
+        const hasAttLoaded = Array.isArray(state.attendance) && state.attendance.length > 0;
+        const isClocked = hasAttLoaded ? !!activeRecord : (state.currentUser.clockedIn || false);
+        const clockInTime = isClocked ? (activeRecord?.clockInTime || state.currentUser.clockInTime || null) : null;
+        state.currentUser = { ...match, ...state.currentUser, clockedIn: isClocked, clockInTime };
+        localStorage.setItem('tia_session', JSON.stringify(state.currentUser));
+        updateAuthUI();
+        if (state.currentUser.clockedIn && state.currentUser.clockInTime) {
+          startLiveShiftTimer(new Date(state.currentUser.clockInTime));
+        } else {
+          stopShiftTimer();
+        }
+      }
+    }
+
     renderEmployeeGrid();
     renderChatStaffList();
     updatePresenceBadges();
@@ -1135,11 +1322,14 @@ function isCurrentUserExecutive() {
   const roleClean = ((state.currentUser.role || '') + ' ' + (state.currentUser.name || '')).toLowerCase().replace(/[^a-z0-9]/g, '');
   const idClean = (state.currentUser.id || '').toLowerCase().replace(/[^a-z0-9_]/g, '');
   return roleClean.includes('ceo') ||
+         roleClean.includes('oc') ||
+         roleClean.includes('operationschief') ||
          roleClean.includes('pa') ||
          roleClean.includes('personalassistant') ||
          roleClean.includes('officemanager') ||
          roleClean.includes('officemgr') ||
          idClean === 'role_ceo' ||
+         idClean === 'role_oc' ||
          idClean === 'role_pa' ||
          idClean === 'role_office_mgr';
 }
@@ -2578,20 +2768,40 @@ function initWebSocket() {
             renderMessages();
           }
         } else if (data.event === 'attendance_clock_in' || data.event === 'attendance_clock_out') {
-          loadAttendance();
-          loadEmployees();
+          const payloadEmail = (data.payload?.email || data.payload?.attendance?.employeeEmail || data.payload?.record?.employeeEmail || '').toLowerCase().trim();
+          const currentEmail = (state.currentUser?.email || '').toLowerCase().trim();
+          const payloadEmpId = data.payload?.employee?.id || data.payload?.attendance?.employeeId || data.payload?.record?.employeeId;
+          const currentEmpId = state.currentUser?.id;
+
+          const isMe = (payloadEmail && currentEmail && payloadEmail === currentEmail) ||
+                       (payloadEmpId && currentEmpId && payloadEmpId === currentEmpId);
+
+          Promise.all([loadAttendance(), loadEmployees()]).then(() => {
+            if (isMe) {
+              restoreSession();
+            } else {
+              renderEmployeeGrid();
+              renderChatStaffList();
+              renderAttendanceTable();
+              updateAuthUI();
+            }
+          });
         } else if (data.event === 'attendance_cleared') {
           showNotification(`🧹 Attendance logs cleared by ${data.payload.clearedBy || 'Authorized Executive'}`);
           loadAttendance();
           loadEmployees();
           updateAuthUI();
         } else if (data.event === 'auto_eod_checkout') {
-          showNotification(data.payload?.message || '🌙 10:00 PM IST: Automated Shift Checkout & Logout executed.');
+          showNotification(data.payload?.message || '🌙 10:00 PM IST: Automated Shift Checkout executed.');
+          if (state.currentUser) {
+            state.currentUser.clockedIn = false;
+            state.currentUser.clockInTime = null;
+            localStorage.setItem('tia_session', JSON.stringify(state.currentUser));
+          }
+          stopShiftTimer();
+          updateAuthUI();
           loadAttendance();
           loadEmployees();
-          if (state.currentUser) {
-            performLogout();
-          }
         }
       } catch (e) {}
     };
@@ -2600,7 +2810,7 @@ function initWebSocket() {
   } catch (e) {}
 }
 
-// Client-Side Automated 10:00 PM IST EOD Shift Check-Out & Logout
+// Client-Side Automated 10:00 PM IST EOD Shift Check-Out
 let clientAutoLogoutDate = '';
 setInterval(() => {
   if (!state.currentUser) return;
@@ -2618,9 +2828,18 @@ setInterval(() => {
 
     if (hour >= 22 && clientAutoLogoutDate !== dateStr) {
       clientAutoLogoutDate = dateStr;
-      showNotification('🌙 10:00 PM IST: Shift completed. Automated checkout & sign out complete.');
-      performLogout();
+      showNotification('🌙 10:00 PM IST: Shift completed. Automated checkout executed at 10:00 PM IST.');
+      localStorage.removeItem('tia_device_clocked_in');
+      localStorage.removeItem('tia_device_active_att_id');
+      if (state.currentUser) {
+        state.currentUser.clockedIn = false;
+        state.currentUser.clockInTime = null;
+        localStorage.setItem('tia_session', JSON.stringify(state.currentUser));
+      }
+      stopShiftTimer();
+      updateAuthUI();
       loadAttendance();
+      loadEmployees();
     }
   } catch (e) {}
 }, 30000);
@@ -2653,6 +2872,20 @@ function closeModal(id) {
   const el = document.getElementById(id);
   if (el) el.classList.remove('active');
 }
+
+// Global modal dismiss listeners (Overlay click + Escape key)
+document.addEventListener('click', (e) => {
+  if (e.target && e.target.classList.contains('modal-overlay')) {
+    e.target.classList.remove('active');
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+    dismissPwaBanner();
+  }
+});
 
 function openDownloadAppModal() {
   if (detectAppMode()) {
@@ -4015,7 +4248,10 @@ function triggerPwaInstall() {
 
 function dismissPwaBanner() {
   const banner = document.getElementById('pwaInstallBanner');
-  if (banner) banner.style.display = 'none';
+  if (banner) {
+    banner.style.setProperty('display', 'none', 'important');
+  }
+  try { sessionStorage.setItem('tia_pwa_banner_dismissed', 'true'); } catch (e) {}
 }
 
 // Mobile Bottom Navigation Switcher

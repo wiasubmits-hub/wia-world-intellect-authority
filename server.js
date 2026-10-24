@@ -145,6 +145,7 @@ function readDb() {
       if (fs.existsSync(ATT_BACKUP_PATH)) {
         try { fallback.attendance = JSON.parse(fs.readFileSync(ATT_BACKUP_PATH, 'utf8')); } catch (e) {}
       }
+      syncEmployeesAttendanceState(fallback);
       return fallback;
     }
     const data = fs.readFileSync(DB_PATH, 'utf8');
@@ -157,6 +158,7 @@ function readDb() {
         }
       } catch (e) {}
     }
+    syncEmployeesAttendanceState(parsed);
     return parsed;
   } catch (err) {
     console.error('Error reading db.json:', err);
@@ -164,10 +166,79 @@ function readDb() {
   }
 }
 
+// Reconciles and synchronizes employee checkin status with active attendance records
+function syncEmployeesAttendanceState(db) {
+  if (!db || !Array.isArray(db.employees)) return;
+  const attList = Array.isArray(db.attendance) ? db.attendance : [];
+  const now = new Date();
+  const todayStr = getISTDateStr(now);
+
+  const istHour = parseInt(new Intl.DateTimeFormat('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    hour: 'numeric',
+    hour12: false
+  }).format(now), 10);
+
+  // 1. Auto-close any unclosed past-day shifts (from yesterday or earlier at 10:00 PM IST)
+  attList.forEach(a => {
+    if (a.date && a.date !== todayStr && (a.clockOut === '--' || (a.status && a.status.includes('Active')))) {
+      a.clockOut = '10:00 pm';
+      a.status = 'Clocked Out (Auto EOD 10:00 PM IST)';
+      if (!a.duration || a.duration === 'In Session') {
+        a.duration = calculateAttendanceDuration(a.clockIn, '10:00 pm', a.clockInTime, a.clockOutTime);
+      }
+      if (!a.notes || !a.notes.includes('10:00 PM IST')) {
+        a.notes = (a.notes || '') + ' | Automated Shift Checkout at 10:00 PM IST';
+      }
+    }
+  });
+
+  // 2. If current time is 10:00 PM IST or later tonight (istHour >= 22), auto-close daytime shifts
+  if (istHour >= 22) {
+    attList.forEach(a => {
+      if (a.date === todayStr && (a.clockOut === '--' || (a.status && a.status.includes('Active')))) {
+        const inMins = parseTimeStrToMinutes(a.clockIn);
+        if (inMins === null || inMins <= 22 * 60) {
+          a.clockOut = '10:00 pm';
+          a.status = 'Clocked Out (Auto EOD 10:00 PM IST)';
+          if (!a.duration || a.duration === 'In Session') {
+            a.duration = calculateAttendanceDuration(a.clockIn, '10:00 pm', a.clockInTime, a.clockOutTime);
+          }
+          if (!a.notes || !a.notes.includes('10:00 PM IST')) {
+            a.notes = (a.notes || '') + ' | Automated Shift Checkout at 10:00 PM IST';
+          }
+        }
+      }
+    });
+  }
+
+  // 3. An employee is actively clocked in TODAY if their latest record today is open
+  db.employees.forEach(emp => {
+    const empEmail = (emp.email || '').toLowerCase().trim();
+    // Find all records for this employee strictly by email or employee ID
+    const empRecords = attList.filter(a => 
+      (empEmail && a.employeeEmail && a.employeeEmail.toLowerCase() === empEmail) ||
+      (a.employeeId && a.employeeId === emp.id)
+    );
+
+    const latestRecord = empRecords[0];
+
+    // If latest record today has clockOut === '--', employee is actively clocked in
+    if (latestRecord && (latestRecord.date === todayStr || !latestRecord.date) && (latestRecord.clockOut === '--' || (latestRecord.status && latestRecord.status.includes('Active')))) {
+      emp.clockedIn = true;
+      emp.clockInTime = latestRecord.clockInTime || emp.clockInTime || new Date().toISOString();
+    } else {
+      emp.clockedIn = false;
+      emp.clockInTime = null;
+    }
+  });
+}
+
 function writeDb(data) {
   try {
+    syncEmployeesAttendanceState(data);
     fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf8');
-    if (Array.isArray(data.attendance)) {
+    if (Array.isArray(data.attendance) && data.attendance.length > 0) {
       try {
         fs.writeFileSync(ATT_BACKUP_PATH, JSON.stringify(data.attendance, null, 2), 'utf8');
       } catch (e) {}
@@ -398,7 +469,9 @@ app.post('/api/auth/logout', (req, res) => {
 
 // 1. EMPLOYEES & REALTIME PRESENCE
 app.get('/api/employees', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   const db = readDb();
+  syncEmployeesAttendanceState(db);
   res.json(db.employees);
 });
 
@@ -427,15 +500,20 @@ function isAuthorizedExecutive(requesterRole, requesterName, requesterId, db) {
   const empRoleClean = emp ? (emp.role || '').toLowerCase().replace(/[^a-z0-9]/g, '') : '';
 
   return roleClean.includes('ceo') ||
+         roleClean.includes('oc') ||
+         roleClean.includes('operationschief') ||
          roleClean.includes('pa') ||
          roleClean.includes('personalassistant') ||
          roleClean.includes('officemanager') ||
          roleClean.includes('officemgr') ||
          empRoleClean.includes('ceo') ||
+         empRoleClean.includes('oc') ||
+         empRoleClean.includes('operationschief') ||
          empRoleClean.includes('pa') ||
          empRoleClean.includes('officemanager') ||
          empRoleClean.includes('officemgr') ||
          idClean === 'role_ceo' ||
+         idClean === 'role_oc' ||
          idClean === 'role_pa' ||
          idClean === 'role_office_mgr';
 }
@@ -622,13 +700,36 @@ function calculateAttendanceDuration(clockIn, clockOut, clockInTime, clockOutTim
 
 app.post('/api/attendance/clock-in', (req, res) => {
   const db = readDb();
-  const { employeeId, workMode, location, notes } = req.body;
-  const emp = db.employees.find(e => e.id === employeeId || e.role.toLowerCase() === (employeeId || '').toLowerCase());
+  const { employeeId, email, deviceId, workMode, location, notes } = req.body;
+  const cleanEmail = (email || '').toLowerCase().trim();
+  const emp = db.employees.find(e => 
+    (cleanEmail && e.email && e.email.toLowerCase() === cleanEmail) ||
+    e.id === employeeId || 
+    (e.role && employeeId && e.role.toLowerCase() === employeeId.toLowerCase())
+  );
   if (!emp) return res.status(404).json({ error: 'Employee not found. Please log in first.' });
 
+  const empEmail = (emp.email || cleanEmail || '').toLowerCase().trim();
   const now = new Date();
   const timeStr = getISTTime(now);
   const dateStr = getISTDateStr(now);
+
+  // Check if this respective employee already has an active session today by email or employeeId
+  let existingActive = db.attendance.find(a => 
+    ((empEmail && a.employeeEmail && a.employeeEmail.toLowerCase() === empEmail) || (a.employeeId && a.employeeId === emp.id)) && 
+    (a.date === dateStr || !a.date) &&
+    (a.clockOut === '--' || (a.status && a.status.includes('Active')))
+  );
+
+  if (existingActive) {
+    emp.clockedIn = true;
+    emp.clockInTime = existingActive.clockInTime || emp.clockInTime || now.toISOString();
+    emp.online = true;
+    emp.status = 'online';
+    emp.lastSeen = 'Active Now';
+    writeDb(db);
+    return res.json({ success: true, attendance: existingActive, employee: emp, alreadyActive: true });
+  }
 
   // Update employee state
   emp.clockedIn = true;
@@ -640,10 +741,12 @@ app.post('/api/attendance/clock-in', (req, res) => {
 
   const displayName = (emp.name && emp.name.trim()) ? emp.name : emp.role;
 
-  // Create attendance record in IST with timestamps
+  // Create attendance record with employeeEmail for email-to-email isolation
   const newAttendance = {
     id: 'att_' + Date.now(),
     employeeId: emp.id,
+    employeeEmail: empEmail,
+    deviceId: deviceId || 'dev_primary',
     employeeName: displayName,
     role: emp.role,
     date: dateStr,
@@ -661,22 +764,31 @@ app.post('/api/attendance/clock-in', (req, res) => {
   db.attendance.unshift(newAttendance);
   writeDb(db);
 
-  broadcast('attendance_clock_in', { attendance: newAttendance, employee: emp });
+  broadcast('attendance_clock_in', { attendance: newAttendance, employee: emp, email: empEmail, deviceId: deviceId || 'dev_primary' });
   res.json({ success: true, attendance: newAttendance, employee: emp });
 });
 
 app.post('/api/attendance/clock-out', (req, res) => {
   const db = readDb();
-  const { employeeId, notes } = req.body;
-  const emp = db.employees.find(e => e.id === employeeId || e.role.toLowerCase() === (employeeId || '').toLowerCase());
+  const { employeeId, email, deviceId, notes } = req.body;
+  const cleanEmail = (email || '').toLowerCase().trim();
+  const emp = db.employees.find(e => 
+    (cleanEmail && e.email && e.email.toLowerCase() === cleanEmail) ||
+    e.id === employeeId || 
+    (e.role && employeeId && e.role.toLowerCase() === employeeId.toLowerCase())
+  );
   if (!emp) return res.status(404).json({ error: 'Employee not found' });
 
+  const empEmail = (emp.email || cleanEmail || '').toLowerCase().trim();
   const now = new Date();
   const timeStr = getISTTime(now);
   const dateStr = getISTDateStr(now);
 
-  // Find latest active attendance record
-  let record = db.attendance.find(a => a.employeeId === emp.id && (a.clockOut === '--' || a.status.includes('Active')));
+  // Find latest active attendance record strictly for this employee by email or employeeId
+  let record = db.attendance.find(a => 
+    ((empEmail && a.employeeEmail && a.employeeEmail.toLowerCase() === empEmail) || (a.employeeId && a.employeeId === emp.id)) && 
+    (a.clockOut === '--' || (a.status && a.status.includes('Active')))
+  );
 
   if (!record) {
     const clockInTimeStr = emp.clockInTime ? getISTTime(new Date(emp.clockInTime)) : timeStr;
@@ -684,6 +796,8 @@ app.post('/api/attendance/clock-out', (req, res) => {
     record = {
       id: 'att_' + Date.now(),
       employeeId: emp.id,
+      employeeEmail: empEmail,
+      deviceId: deviceId || 'dev_primary',
       employeeName: (emp.name && emp.name.trim()) ? emp.name : emp.role,
       role: emp.role,
       date: dateStr,
@@ -701,6 +815,7 @@ app.post('/api/attendance/clock-out', (req, res) => {
   } else {
     record.clockOut = timeStr;
     record.clockOutTime = now.toISOString();
+    if (!record.employeeEmail) record.employeeEmail = empEmail;
     if (!record.clockInTime && emp.clockInTime) {
       record.clockInTime = emp.clockInTime;
     }
@@ -709,12 +824,26 @@ app.post('/api/attendance/clock-out', (req, res) => {
     if (notes) record.notes += ` | Sign-off: ${notes}`;
   }
 
+  // Also close any duplicate active sessions for this employee's email/id
+  db.attendance.forEach(a => {
+    if (((empEmail && a.employeeEmail && a.employeeEmail.toLowerCase() === empEmail) || (a.employeeId && a.employeeId === emp.id)) && 
+        (a.clockOut === '--' || (a.status && a.status.includes('Active')))) {
+      a.clockOut = timeStr;
+      a.clockOutTime = now.toISOString();
+      if (!a.employeeEmail) a.employeeEmail = empEmail;
+      a.status = 'Clocked Out';
+      if (!a.duration || a.duration === 'In Session') {
+        a.duration = calculateAttendanceDuration(a.clockIn, timeStr, a.clockInTime, a.clockOutTime);
+      }
+    }
+  });
+
   emp.clockedIn = false;
   emp.clockInTime = null;
   emp.lastSeen = timeStr;
 
   writeDb(db);
-  broadcast('attendance_clock_out', { record, employee: emp });
+  broadcast('attendance_clock_out', { record, employee: emp, email: empEmail, deviceId: deviceId || 'dev_primary' });
   res.json({ success: true, record, employee: emp });
 });
 
@@ -731,7 +860,13 @@ app.post('/api/attendance/sync', (req, res) => {
       }
     });
     if (changed) {
-      db.attendance.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      db.attendance.sort((a, b) => {
+        const dateCmp = (b.date || '').localeCompare(a.date || '');
+        if (dateCmp !== 0) return dateCmp;
+        const tB = b.clockInTime ? new Date(b.clockInTime).getTime() : (parseInt((b.id || '').replace(/\D/g, ''), 10) || 0);
+        const tA = a.clockInTime ? new Date(a.clockInTime).getTime() : (parseInt((a.id || '').replace(/\D/g, ''), 10) || 0);
+        return tB - tA;
+      });
       writeDb(db);
     }
   }
@@ -813,8 +948,8 @@ setInterval(() => {
     const hour = parseInt(istParts.find(p => p.type === 'hour')?.value || '0', 10);
     const dateStr = getISTDateStr(now);
 
-    // Trigger at 22:00 (10:00 PM IST)
-    if (hour === 22 && lastAutoCheckoutDate !== dateStr) {
+    // Trigger at 22:00 (10:00 PM IST) or later
+    if (hour >= 22 && lastAutoCheckoutDate !== dateStr) {
       lastAutoCheckoutDate = dateStr;
       const db = readDb();
       let updated = false;
@@ -827,39 +962,29 @@ setInterval(() => {
           emp.online = false;
           emp.status = 'offline';
           emp.lastSeen = 'Auto Checked Out (10:00 PM IST)';
-
-          let record = db.attendance.find(a => a.employeeId === emp.id && (a.clockOut === '--' || a.status.includes('Active')));
-          if (record) {
-            record.clockOut = checkoutTimeStr;
-            record.clockOutTime = now.toISOString();
-            record.duration = calculateAttendanceDuration(record.clockIn, checkoutTimeStr, record.clockInTime, record.clockOutTime);
-            record.status = 'Clocked Out (Auto EOD 10:00 PM IST)';
-            record.notes = (record.notes || '') + ' | Automated Shift Checkout at 10:00 PM IST';
-          } else {
-            const clockInTimeStr = '09:00 am';
-            db.attendance.unshift({
-              id: 'att_' + Date.now() + '_' + emp.id,
-              employeeId: emp.id,
-              employeeName: emp.name || emp.role,
-              role: emp.role,
-              date: dateStr,
-              clockIn: clockInTimeStr,
-              clockOut: checkoutTimeStr,
-              clockInTime: null,
-              clockOutTime: now.toISOString(),
-              duration: calculateAttendanceDuration(clockInTimeStr, checkoutTimeStr),
-              status: 'Clocked Out (Auto EOD 10:00 PM IST)',
-              workMode: emp.workMode || 'Executive Office',
-              location: 'Tirupati Intellect Authority Online',
-              notes: 'Automated Shift Checkout at 10:00 PM IST'
-            });
-          }
           updated = true;
         } else if (emp.online) {
           emp.online = false;
           emp.status = 'offline';
           emp.lastSeen = 'Auto Logged Out (10:00 PM IST)';
           updated = true;
+        }
+      });
+
+      // Auto close any active unclosed attendance sessions started before 10 PM
+      db.attendance.forEach(record => {
+        if (record.clockOut === '--' || (record.status && record.status.includes('Active'))) {
+          const inMins = parseTimeStrToMinutes(record.clockIn);
+          if (inMins === null || inMins <= 22 * 60) {
+            record.clockOut = checkoutTimeStr;
+            record.clockOutTime = now.toISOString();
+            record.duration = calculateAttendanceDuration(record.clockIn, checkoutTimeStr, record.clockInTime, record.clockOutTime);
+            record.status = 'Clocked Out (Auto EOD 10:00 PM IST)';
+            if (!record.notes || !record.notes.includes('10:00 PM IST')) {
+              record.notes = (record.notes || '') + ' | Automated Shift Checkout at 10:00 PM IST';
+            }
+            updated = true;
+          }
         }
       });
 
